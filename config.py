@@ -130,10 +130,12 @@ SHARED_CSS = """
     
     /* Login/Signup Styles */
     .form-container {
-        background: white;
+        background: linear-gradient(145deg, #ffffff, #f8f9fb);
         padding: 2rem;
         border-radius: 15px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+        border: 1px solid rgba(255,255,255,0.2);
+        backdrop-filter: blur(10px);
         margin: 2rem 0;
     }
     
@@ -143,6 +145,8 @@ SHARED_CSS = """
         border-radius: 20px;
         text-align: center;
         margin: 2rem 0;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+        border: 1px solid rgba(255,255,255,0.3);
     }
     
     .blue-gradient {
@@ -151,78 +155,140 @@ SHARED_CSS = """
         padding: 2rem;
         border-radius: 20px;
         margin: 1rem 0;
+        box-shadow: 0 8px 32px rgba(66, 133, 244, 0.3);
+        border: 1px solid rgba(255,255,255,0.2);
     }
     
     /* Chat Interface Styles */
     .user-message {
         background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
         border-radius: 18px 18px 4px 18px;
-        padding: 8px 12px;
-        margin: 4px 0;
-        margin-left: 20%;
+        padding: 12px 16px;
+        margin: 6px 0;
+        margin-left: 15%;
         max-width: 80%;
         align-self: flex-end;
         position: relative;
         word-wrap: break-word;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 12px rgba(21, 101, 192, 0.15);
+        border: 1px solid rgba(21, 101, 192, 0.1);
         color: #1565c0;
+        backdrop-filter: blur(5px);
     }
     
     .assistant-message {
         background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
         border-radius: 18px 18px 18px 4px;
-        padding: 8px 12px;
-        margin: 4px 0;
-        margin-right: 20%;
+        padding: 12px 16px;
+        margin: 6px 0;
+        margin-right: 15%;
         max-width: 80%;
         align-self: flex-start;
         position: relative;
         word-wrap: break-word;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-        border: 1px solid #f57f17;
+        box-shadow: 0 4px 12px rgba(245, 127, 23, 0.15);
+        border: 1px solid rgba(245, 127, 23, 0.2);
         color: #e65100;
+        backdrop-filter: blur(5px);
     }
     
     .message-time {
         font-size: 11px;
         color: #667781;
         text-align: right;
-        margin-top: 4px;
+        margin-top: 6px;
         opacity: 0.8;
+        font-weight: 500;
     }
     
     .chat-header {
         background: linear-gradient(90deg, #25d366, #20c157);
         color: white;
-        padding: 1rem;
-        border-radius: 10px 10px 0 0;
+        padding: 1.2rem;
+        border-radius: 15px;
         margin-bottom: 1rem;
         text-align: center;
         font-weight: bold;
+        box-shadow: 0 6px 20px rgba(37, 211, 102, 0.3);
+        border: 1px solid rgba(255,255,255,0.2);
     }
     
+    /* Enhanced Button Styles */
     .stButton > button {
-        background-color: #25d366;
+        background: linear-gradient(135deg, #25d366, #20c157);
         color: white;
-        border-radius: 20px;
+        border-radius: 25px;
         border: none;
-        padding: 8px 16px;
+        padding: 12px 24px;
         transition: all 0.3s ease;
+        font-weight: 600;
+        box-shadow: 0 4px 15px rgba(37, 211, 102, 0.3);
+        border: 1px solid rgba(255,255,255,0.2);
     }
     
     .stButton > button:hover {
-        background-color: #20c157;
-        transform: translateY(-1px);
+        background: linear-gradient(135deg, #20c157, #1ea34a);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(37, 211, 102, 0.4);
     }
     
+    /* Chat Input Styling */
     .stChatInput {
-        background-color: #ffffff;
+        background: linear-gradient(145deg, #ffffff, #f8f9fb);
         border-radius: 25px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        border: 1px solid rgba(0,0,0,0.05);
     }
     
     .stChatInput > div {
         border-radius: 25px;
         border: 1px solid #e5e5e5;
+        background: transparent;
+    }
+    
+    /* Sidebar & Memory Bot Styles */
+    .sidebar .element-container {
+        background: linear-gradient(145deg, #ffffff, #f8f9fb);
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 6px 25px rgba(0,0,0,0.08);
+        border: 1px solid rgba(0,0,0,0.05);
+        backdrop-filter: blur(10px);
+    }
+    
+    /* Code Block Styling */
+    .stCode {
+        background: linear-gradient(145deg, #f8f9fa, #e9ecef) !important;
+        border-radius: 10px !important;
+        border: 1px solid rgba(0,0,0,0.1) !important;
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.05) !important;
+    }
+    
+    /* Container Backgrounds */
+    .stContainer {
+        background: rgba(255,255,255,0.7);
+        border-radius: 15px;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.2);
+    }
+    
+    /* Download Button Special Styling */
+    .stDownloadButton > button {
+        background: linear-gradient(135deg, #6c5ce7, #5f3dc4);
+        color: white;
+        border-radius: 20px;
+        border: none;
+        padding: 10px 20px;
+        font-weight: 600;
+        box-shadow: 0 4px 15px rgba(108, 92, 231, 0.3);
+        transition: all 0.3s ease;
+    }
+    
+    .stDownloadButton > button:hover {
+        background: linear-gradient(135deg, #5f3dc4, #553c9a);
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(108, 92, 231, 0.4);
     }
 </style>
 """

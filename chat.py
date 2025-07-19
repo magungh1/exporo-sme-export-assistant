@@ -343,7 +343,19 @@ def show_chat_interface():
 
 def show_memory_bot():
     """Display the memory bot sidebar"""
-    st.subheader("🧠 Memory Bot")
+    st.markdown("""
+    <div style="
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 1rem;
+        border-radius: 15px;
+        text-align: center;
+        margin-bottom: 1rem;
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+        border: 1px solid rgba(255,255,255,0.2);
+    ">
+        <h3 style="color: white; margin: 0; font-weight: 600;">🧠 Memory Bot</h3>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Show user ID
     st.caption(f"Session ID: {st.session_state.user_id[:8]}...")
@@ -356,7 +368,20 @@ def show_memory_bot():
         update_memory_bot(newly_extracted_data)
         
         # Display memory_bot as raw JSON
+        st.markdown("""
+        <div style="
+            background: linear-gradient(145deg, #f8f9fa, #e9ecef);
+            padding: 1rem;
+            border-radius: 10px;
+            border: 1px solid rgba(0,0,0,0.1);
+            margin: 1rem 0;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+        ">
+        """, unsafe_allow_html=True)
+        
         st.code(json.dumps(st.session_state.memory_bot, indent=2, ensure_ascii=False), language="json")
+        
+        st.markdown("</div>", unsafe_allow_html=True)
         
         # Download button for memory_bot data
         st.download_button(
@@ -366,7 +391,18 @@ def show_memory_bot():
             mime="application/json"
         )
         
-        # Gemini status
+        # Gemini status with background
+        st.markdown("""
+        <div style="
+            background: linear-gradient(145deg, #ffffff, #f8f9fb);
+            padding: 1rem;
+            border-radius: 10px;
+            border: 1px solid rgba(0,0,0,0.05);
+            margin: 1rem 0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        ">
+        """, unsafe_allow_html=True)
+        
         try:
             init_gemini()
             st.success("🤖 Connected to Gemini")
@@ -375,6 +411,8 @@ def show_memory_bot():
             st.info("💡 Create a .env file with your GEMINI_API_KEY or set it as an environment variable")
         except Exception as e:
             st.error(f"❌ Gemini API connection failed: {str(e)}")
+            
+        st.markdown("</div>", unsafe_allow_html=True)
             
     else:
         st.write("Mulai percakapan untuk melihat data yang diekstrak...")
