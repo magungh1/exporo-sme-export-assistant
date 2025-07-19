@@ -24,7 +24,7 @@ except ImportError:
     EMBEDDING_AVAILABLE = False
     st.warning("⚠️ Text embedding libraries not available. Some features may be limited.")
 
-from .config import GEMINI_API_KEY, DEFAULT_EXTRACTED_DATA
+from .config import GEMINI_API_KEY, DEFAULT_EXTRACTED_DATA, EXPORT_READINESS_PROMPT
 from .chat import init_gemini
 
 # Export Readiness Configuration
@@ -66,34 +66,7 @@ CERTIFICATION_REQUIREMENTS = {
     }
 }
 
-EXPORT_READINESS_PROMPT = """
-Analyze export readiness for {product_name} ({product_category}) to {target_country}:
-
-Product Details:
-- Name: {product_name}
-- Category: {product_category}
-- Description: {product_description}
-- Production Capacity: {production_capacity}
-- Production Location: {production_location}
-
-Assessment Criteria:
-1. Regulatory Compliance (25%): Product meets {target_country} import regulations
-2. Market Viability (25%): Product demand and competition in {target_country}
-3. Documentation Readiness (25%): Required certifications and paperwork completion
-4. Competitive Positioning (25%): Product competitiveness in target market
-
-Required Certifications for {target_country}:
-{certifications}
-
-Please provide:
-1. Overall readiness score (0-100)
-2. Category scores for each criterion
-3. Specific action items to improve readiness
-4. Estimated timeline for export preparation
-5. Market entry recommendations
-
-Return as JSON format with detailed explanations.
-"""
+# EXPORT_READINESS_PROMPT is now imported from config.py
 
 def init_export_readiness_session_state():
     """Initialize session state for export readiness assessment"""
@@ -230,7 +203,7 @@ def get_certification_requirements(country_code: str, product_category: str) -> 
     return CERTIFICATION_REQUIREMENTS.get(country_code, {}).get(product_category, [])
 
 def analyze_export_readiness() -> Dict:
-    """Perform comprehensive export readiness analysis"""
+    """Perform comprehensive AI-powered export readiness analysis"""
     memory_data = get_memory_bot_data()
     country = st.session_state.selected_country
     
@@ -238,6 +211,7 @@ def analyze_export_readiness() -> Dict:
         return {"error": "No country selected"}
     
     # Get product details
+    company_name = memory_data.get('company_name', 'Not specified')
     product_name = memory_data.get('product_details', {}).get('name', 'Product')
     product_category = memory_data.get('product_category', 'Other')
     product_description = memory_data.get('product_details', {}).get('description', 'No description')
@@ -247,14 +221,80 @@ def analyze_export_readiness() -> Dict:
     capacity_str = f"{capacity.get('amount', 0)} {capacity.get('unit', '')} per {capacity.get('timeframe', '')}"
     
     location = memory_data.get('production_location', {})
-    location_str = f"{location.get('city', '')}, {location.get('province', '')}"
+    location_str = f"{location.get('city', '')}, {location.get('province', '')}, Indonesia"
     
     # Get certification requirements
     certifications = get_certification_requirements(country['code'], product_category)
     cert_str = ", ".join(certifications) if certifications else "No specific certifications found"
     
-    # For MVP, return simulated analysis
-    # In Phase 2, this will use Gemini AI for detailed analysis
+    try:
+        # Initialize Gemini AI
+        client = init_gemini()
+        
+        # Prepare the prompt with actual data
+        formatted_prompt = EXPORT_READINESS_PROMPT.format(
+            target_country=country['name'],
+            company_name=company_name,
+            product_name=product_name,
+            product_category=product_category,
+            product_description=product_description,
+            production_capacity=capacity_str,
+            production_location=location_str,
+            market_difficulty=country['difficulty'],
+            market_size=country['market_size'],
+            required_certifications=cert_str
+        )
+        
+        # Send to Gemini for analysis
+        response = client.models.generate_content(
+            model='gemini-2.0-flash-exp',
+            contents=formatted_prompt
+        )
+        
+        # Parse the AI response
+        ai_response = response.text.strip()
+        
+        # Clean up the response (remove markdown formatting if any)
+        if ai_response.startswith("```json"):
+            ai_response = ai_response[7:]
+        if ai_response.endswith("```"):
+            ai_response = ai_response[:-3]
+        
+        # Parse JSON response
+        assessment_data = json.loads(ai_response)
+        
+        # Add additional metadata
+        assessment_data.update({
+            "certifications": certifications,
+            "country": country,
+            "product_info": {
+                "name": product_name,
+                "category": product_category,
+                "description": product_description,
+                "company": company_name
+            },
+            "ai_powered": True
+        })
+        
+        return assessment_data
+        
+    except json.JSONDecodeError as e:
+        st.error(f"❌ Error parsing AI response: {str(e)}")
+        # Fallback to basic analysis
+        return get_fallback_analysis(memory_data, country, certifications)
+        
+    except Exception as e:
+        st.error(f"❌ AI Analysis Error: {str(e)}")
+        # Fallback to basic analysis
+        return get_fallback_analysis(memory_data, country, certifications)
+
+def get_fallback_analysis(memory_data: Dict, country: Dict, certifications: List[str]) -> Dict:
+    """Fallback analysis when AI is not available"""
+    
+    # Get product details
+    product_name = memory_data.get('product_details', {}).get('name', 'Product')
+    product_category = memory_data.get('product_category', 'Other')
+    product_description = memory_data.get('product_details', {}).get('description', 'No description')
     
     # Calculate basic readiness score
     base_score = 65
@@ -266,17 +306,11 @@ def analyze_export_readiness() -> Dict:
         base_score += 5
     if product_description != "No description":
         base_score += 5
-    if capacity.get('amount', 0) > 0:
-        base_score += 5
     if st.session_state.uploaded_product_image:
         base_score += 10
     
     # Adjust based on target country difficulty
-    difficulty_adjustment = {
-        "Low": 10,
-        "Medium": 0,
-        "High": -10
-    }
+    difficulty_adjustment = {"Low": 10, "Medium": 0, "High": -10}
     base_score += difficulty_adjustment.get(country['difficulty'], 0)
     
     # Ensure score is within bounds
@@ -294,7 +328,7 @@ def analyze_export_readiness() -> Dict:
     action_items = []
     
     if category_scores["regulatory_compliance"] < 80:
-        action_items.append("Research and obtain required certifications for " + country['name'])
+        action_items.append(f"Research and obtain required certifications for {country['name']}")
     
     if category_scores["documentation_readiness"] < 70:
         action_items.append("Prepare export documentation and compliance certificates")
@@ -306,24 +340,34 @@ def analyze_export_readiness() -> Dict:
         action_items.append("Upload product images for visual compliance verification")
     
     if len(certifications) > 0:
+        cert_str = ", ".join(certifications)
         action_items.append(f"Obtain the following certifications: {cert_str}")
     
     # Estimate timeline
     timeline_weeks = len(action_items) * 2 + (4 if country['difficulty'] == "High" else 2)
     timeline = f"{timeline_weeks} weeks"
     
+    # Determine readiness level
+    readiness_level = "Ready" if overall_score >= 80 else "Needs Preparation" if overall_score >= 60 else "Significant Work Required"
+    
     return {
         "overall_score": overall_score,
         "category_scores": category_scores,
         "action_items": action_items,
-        "timeline": timeline,
+        "timeline_estimate": timeline,
+        "market_insights": f"Basic analysis for {product_category} export to {country['name']}. AI analysis recommended for detailed insights.",
+        "certification_priority": certifications[:2] if certifications else [],
+        "competitive_advantages": ["Made in Indonesia", "Competitive pricing"],
+        "potential_challenges": [f"{country['difficulty']} market entry difficulty", "Certification requirements"],
+        "export_readiness_level": readiness_level,
         "certifications": certifications,
         "country": country,
         "product_info": {
             "name": product_name,
             "category": product_category,
             "description": product_description
-        }
+        },
+        "ai_powered": False
     }
 
 def display_assessment_results(results: Dict):
@@ -391,46 +435,120 @@ def display_assessment_results(results: Dict):
     
     # Timeline
     st.subheader("⏱️ Estimated Timeline")
-    st.info(f"📅 Estimated preparation time: **{results['timeline']}**")
+    timeline = results.get('timeline_estimate', results.get('timeline', 'Not specified'))
+    st.info(f"📅 Estimated preparation time: **{timeline}**")
+    
+    # Market Insights (AI-powered)
+    if 'market_insights' in results:
+        st.subheader("🎯 Market Insights")
+        st.write(results['market_insights'])
+    
+    # Competitive Advantages
+    if 'competitive_advantages' in results and results['competitive_advantages']:
+        st.subheader("💪 Competitive Advantages")
+        for advantage in results['competitive_advantages']:
+            st.write(f"✅ {advantage}")
+    
+    # Potential Challenges
+    if 'potential_challenges' in results and results['potential_challenges']:
+        st.subheader("⚠️ Potential Challenges")
+        for challenge in results['potential_challenges']:
+            st.write(f"⚠️ {challenge}")
+    
+    # Export Readiness Level
+    if 'export_readiness_level' in results:
+        readiness_level = results['export_readiness_level']
+        level_color = "#27ae60" if readiness_level == "Ready" else "#f39c12" if readiness_level == "Needs Preparation" else "#e74c3c"
+        
+        st.markdown(f"""
+        <div style="
+            background: {level_color}20;
+            padding: 1rem;
+            border-radius: 10px;
+            border-left: 5px solid {level_color};
+            margin: 1rem 0;
+        ">
+            <h4 style="color: {level_color}; margin: 0;">📊 Export Readiness Level: {readiness_level}</h4>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Certification Priority
+    if 'certification_priority' in results and results['certification_priority']:
+        st.subheader("🏆 Priority Certifications")
+        for i, cert in enumerate(results['certification_priority'], 1):
+            st.write(f"{i}. {cert}")
     
     # Required Certifications
     if results['certifications']:
-        st.subheader("📜 Required Certifications")
+        st.subheader("📜 All Required Certifications")
         for cert in results['certifications']:
             st.write(f"• {cert}")
     
+    # AI-powered indicator
+    if results.get('ai_powered', False):
+        st.success("🤖 Analysis powered by Gemini AI")
+    else:
+        st.info("📊 Basic analysis - Connect to Gemini AI for enhanced insights")
+    
     # Export Results Button
     if st.button("📄 Download Assessment Report", type="primary"):
-        # Generate simple text report (PDF generation would be in Phase 3)
+        # Generate comprehensive text report
+        timeline = results.get('timeline_estimate', results.get('timeline', 'Not specified'))
+        readiness_level = results.get('export_readiness_level', 'Not assessed')
+        market_insights = results.get('market_insights', 'No insights available')
+        
         report_text = f"""
 EXPORT READINESS ASSESSMENT REPORT
 Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+Analysis Type: {"AI-Powered" if results.get('ai_powered', False) else "Basic Analysis"}
 
-PRODUCT: {results['product_info']['name']}
-CATEGORY: {results['product_info']['category']}
-TARGET MARKET: {results['country']['name']}
+=== PRODUCT INFORMATION ===
+Company: {results['product_info'].get('company', 'Not specified')}
+Product: {results['product_info']['name']}
+Category: {results['product_info']['category']}
+Target Market: {results['country']['name']}
 
-OVERALL SCORE: {results['overall_score']}/100
+=== ASSESSMENT RESULTS ===
+Overall Score: {results['overall_score']}/100
+Export Readiness Level: {readiness_level}
 
-CATEGORY SCORES:
+Category Breakdown:
 - Regulatory Compliance: {categories['regulatory_compliance']}/100
 - Market Viability: {categories['market_viability']}/100
 - Documentation Readiness: {categories['documentation_readiness']}/100
 - Competitive Positioning: {categories['competitive_positioning']}/100
 
-ACTION ITEMS:
-{chr(10).join([f"- {item}" for item in results['action_items']])}
+=== MARKET INSIGHTS ===
+{market_insights}
 
-REQUIRED CERTIFICATIONS:
-{chr(10).join([f"- {cert}" for cert in results['certifications']])}
+=== ACTION PLAN ===
+{chr(10).join([f"{i+1}. {item}" for i, item in enumerate(results['action_items'])])}
 
-ESTIMATED TIMELINE: {results['timeline']}
+=== COMPETITIVE ADVANTAGES ===
+{chr(10).join([f"+ {adv}" for adv in results.get('competitive_advantages', [])])}
+
+=== POTENTIAL CHALLENGES ===
+{chr(10).join([f"- {challenge}" for challenge in results.get('potential_challenges', [])])}
+
+=== CERTIFICATION REQUIREMENTS ===
+Priority Certifications:
+{chr(10).join([f"1. {cert}" for cert in results.get('certification_priority', [])])}
+
+All Required Certifications:
+{chr(10).join([f"• {cert}" for cert in results['certifications']])}
+
+=== TIMELINE ===
+Estimated Preparation Time: {timeline}
+
+---
+Report generated by Exporo SME Export Assistant
+For more information, visit: https://github.com/magungh1/exporo-sme-export-assistant
         """
         
         st.download_button(
-            label="📥 Download as Text File",
+            label="📥 Download Complete Report",
             data=report_text,
-            file_name=f"export_readiness_report_{datetime.now().strftime('%Y%m%d')}.txt",
+            file_name=f"export_readiness_{results['country']['code'].lower()}_{datetime.now().strftime('%Y%m%d')}.txt",
             mime="text/plain"
         )
 
