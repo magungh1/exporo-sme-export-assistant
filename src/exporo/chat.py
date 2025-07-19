@@ -11,7 +11,7 @@ import base64
 import io
 from google import genai
 from google.genai import types
-from config import GEMINI_API_KEY, USER_PROFILING_PROMPT, DATA_EXTRACTION_PROMPT, DEFAULT_EXTRACTED_DATA
+from .config import GEMINI_API_KEY, USER_PROFILING_PROMPT, DATA_EXTRACTION_PROMPT, DEFAULT_EXTRACTED_DATA
 
 # Initialize Gemini client
 @st.cache_resource

@@ -8,7 +8,7 @@ import sqlite3
 import hashlib
 import time
 import re
-from config import DATABASE_NAME, DEFAULT_EXTRACTED_DATA
+from .config import DATABASE_NAME, DEFAULT_EXTRACTED_DATA
 import uuid
 from datetime import datetime
 
