@@ -7,7 +7,7 @@ import streamlit as st
 from config import APP_TITLE, APP_ICON, SHARED_CSS
 from auth import (
     init_db, init_auth_session_state, show_navigation, 
-    show_login_page, show_signup_page, get_user_count
+    show_login_page, show_signup_page, show_welcome_landing_page, get_user_count
 )
 from chat import init_chat_session_state, show_full_chat_page
 
@@ -40,8 +40,15 @@ def main():
         elif st.session_state.page == 'signup':
             show_signup_page()
     else:
-        # Show chat interface for logged-in users
-        show_full_chat_page()
+        # Show pages for logged-in users
+        if st.session_state.page == 'welcome':
+            show_welcome_landing_page()
+        elif st.session_state.page == 'chat':
+            show_full_chat_page()
+        else:
+            # Default to welcome page for logged-in users
+            st.session_state.page = 'welcome'
+            show_welcome_landing_page()
     
     # Footer
     st.markdown("---")

@@ -270,8 +270,8 @@ def show_signup_page():
 def show_navigation():
     """Display navigation buttons"""
     # Header with navigation
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
+    col1, col2 = st.columns([3, 2])
+    with col1:
         st.markdown("### 🚀 Exporo - SME Export Assistant")
 
     # Navigation buttons
@@ -286,14 +286,303 @@ def show_navigation():
                 st.session_state.page = 'signup'
                 st.rerun()
     else:
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.write(f"Welcome, {st.session_state.user['first_name']}!")
-        with col3:
-            if st.button("Logout", type="secondary"):
+        # Move navigation to sidebar for logged-in users
+        with st.sidebar:
+            # Dark sidebar styling
+            st.markdown("""
+            <style>
+            .sidebar .block-container {
+                background: linear-gradient(180deg, #2c3e50, #34495e) !important;
+                color: white;
+                border-radius: 0;
+                padding: 2rem 1rem !important;
+            }
+            .sidebar-header {
+                background: linear-gradient(135deg, #2c3e50, #34495e);
+                padding: 1.5rem 1rem;
+                text-align: center;
+                margin: -1rem -1rem 1rem -1rem;
+                border-radius: 0;
+            }
+            .user-profile {
+                display: flex;
+                align-items: center;
+                gap: 0.8rem;
+                margin-bottom: 1rem;
+                padding: 1rem;
+                background: rgba(255,255,255,0.1);
+                border-radius: 10px;
+            }
+            .nav-item {
+                display: flex;
+                align-items: center;
+                gap: 0.8rem;
+                padding: 0.8rem 1rem;
+                margin: 0.3rem 0;
+                border-radius: 8px;
+                color: white;
+                text-decoration: none;
+                transition: all 0.3s ease;
+            }
+            .nav-item:hover {
+                background: rgba(255,255,255,0.1);
+            }
+            .nav-item.active {
+                background: linear-gradient(135deg, #3498db, #2980b9);
+                color: white;
+            }
+            .nav-icon {
+                font-size: 1.2rem;
+                width: 24px;
+            }
+            .stButton > button {
+                font-size: 0.85rem !important;
+            }
+            .stSidebar .stButton > button {
+                background: linear-gradient(135deg, #4a6741, #5a7a51) !important;
+                color: white !important;
+                border: 1px solid rgba(255,255,255,0.2) !important;
+            }
+            .stSidebar .stButton > button:hover {
+                background: linear-gradient(135deg, #5a7a51, #6a8a61) !important;
+            }
+            .stMarkdown {
+                margin-bottom: 0 !important;
+                margin-top: 0 !important;
+            }
+            .stSidebar .stMarkdown {
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            .stSidebar [data-testid="stMarkdownContainer"] {
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            </style>
+            """, unsafe_allow_html=True)
+            
+            # Header with logo
+            st.markdown("""
+            <div class="sidebar-header">
+                <h3 style="color: white; margin: 0;">🚀 Exporo</h3>
+                <p style="color: rgba(255,255,255,0.8); margin: 0.5rem 0 0 0; font-size: 0.9rem;">SME Export Assistant</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # User profile and navigation combined to eliminate gaps
+            st.markdown(f"""
+            <!-- User profile section -->
+            <div style="
+                background: linear-gradient(135deg, rgba(52, 152, 219, 0.3), rgba(41, 128, 185, 0.3));
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255,255,255,0.2);
+                box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+                display: flex;
+                align-items: center;
+                gap: 0.8rem;
+                margin-bottom: 0;
+                padding: 1rem;
+                border-radius: 12px 12px 0 0;
+                max-width: 100%;
+                overflow: hidden;
+            ">
+                <div style="
+                    width: 40px; 
+                    height: 40px; 
+                    background: linear-gradient(135deg, #3498db, #2980b9);
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    font-weight: bold;
+                    font-size: 1.2rem;
+                    box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
+                    flex-shrink: 0;
+                ">
+                    {st.session_state.user['first_name'][0].upper()}
+                </div>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="color: white; font-weight: 600; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{st.session_state.user['first_name']} {st.session_state.user['last_name']}</div>
+                    <div style="color: rgba(255,255,255,0.8); font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{st.session_state.user['email']}</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            if st.button("📋  Langkah Ekspor Saya", 
+                        type="primary" if st.session_state.page == 'langkah-ekspor' else "secondary", 
+                        use_container_width=True,
+                        key="nav_langkah"):
+                st.session_state.page = 'langkah-ekspor'
+                st.info("📋 Langkah Ekspor Saya - Coming Soon!")
+                
+            if st.button("👤  Profil Bisnis", 
+                        type="primary" if st.session_state.page == 'profil-bisnis' else "secondary", 
+                        use_container_width=True,
+                        key="nav_profil"):
+                st.session_state.page = 'profil-bisnis'
+                st.info("👤 Profil Bisnis - Coming Soon!")
+                
+            if st.button("📄  Persiapan Dokumen", 
+                        type="primary" if st.session_state.page == 'dokumen' else "secondary", 
+                        use_container_width=True,
+                        key="nav_dokumen"):
+                st.session_state.page = 'dokumen'
+                st.info("📄 Persiapan Dokumen - Coming Soon!")
+                
+            if st.button("⭐  Kualitas Produk Saya", 
+                        type="primary" if st.session_state.page == 'kualitas' else "secondary", 
+                        use_container_width=True,
+                        key="nav_kualitas"):
+                st.session_state.page = 'kualitas'
+                st.info("⭐ Kualitas Produk Saya - Coming Soon!")
+                
+            if st.button("🌍  Cek Pasar Global", 
+                        type="primary" if st.session_state.page == 'pasar-global' else "secondary", 
+                        use_container_width=True,
+                        key="nav_pasar"):
+                st.session_state.page = 'pasar-global'
+                st.info("🌍 Cek Pasar Global - Coming Soon!")
+                
+            if st.button("💬  Diskusi dengan Exporo", 
+                        type="primary" if st.session_state.page == 'chat' else "secondary", 
+                        use_container_width=True,
+                        key="nav_chat"):
+                st.session_state.page = 'chat'
+                st.rerun()
+                
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            if st.button("🚪  Logout", 
+                        type="secondary", 
+                        use_container_width=True,
+                        key="nav_logout"):
                 st.session_state.logged_in = False
                 st.session_state.user = None
                 st.session_state.page = 'login'
                 reset_user_data()
                 st.success("Logged out successfully!")
                 st.rerun()
+
+def show_welcome_landing_page():
+    """Display the welcome/landing page after login"""
+    user_name = st.session_state.user['first_name']
+    
+    # Welcome hero section
+    st.markdown(f"""
+    <div style="
+        background: linear-gradient(135deg, #87CEEB, #B0E0E6);
+        padding: 4rem 2rem;
+        border-radius: 25px;
+        text-align: center;
+        margin: 2rem 0;
+        box-shadow: 0 10px 40px rgba(135, 206, 235, 0.3);
+        border: 1px solid rgba(255,255,255,0.3);
+    ">
+        <div style="margin-bottom: 2rem;">
+            <img src="https://via.placeholder.com/200x250/4285F4/FFFFFF?text=Exporo" 
+                 style="width: 150px; border-radius: 20px; box-shadow: 0 8px 25px rgba(0,0,0,0.2);">
+        </div>
+        <h1 style="color: white; margin: 0; font-size: 3rem; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            Selamat Datang, {user_name}! 🎉
+        </h1>
+        <p style="color: rgba(255,255,255,0.95); margin: 1rem 0; font-size: 1.3rem; line-height: 1.6;">
+            <strong>Saya Exporo</strong>, asisten AI yang akan membantu Anda mempersiapkan bisnis untuk ekspor ke pasar global!
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Features section
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown("""
+        <div style="
+            background: linear-gradient(145deg, #ffffff, #f8f9fb);
+            padding: 2rem;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            border: 1px solid rgba(0,0,0,0.05);
+            height: 280px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        ">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">💬</div>
+            <h3 style="color: #2c3e50; margin-bottom: 1rem;">Chat dengan AI</h3>
+            <p style="color: #7f8c8d; line-height: 1.5;">
+                Berbincang natural dalam Bahasa Indonesia untuk mengumpulkan profil bisnis Anda
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("""
+        <div style="
+            background: linear-gradient(145deg, #ffffff, #f8f9fb);
+            padding: 2rem;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            border: 1px solid rgba(0,0,0,0.05);
+            height: 280px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        ">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🧠</div>
+            <h3 style="color: #2c3e50; margin-bottom: 1rem;">Memory Bot</h3>
+            <p style="color: #7f8c8d; line-height: 1.5;">
+                AI yang mengingat dan mengorganisir informasi bisnis Anda secara otomatis
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        st.markdown("""
+        <div style="
+            background: linear-gradient(145deg, #ffffff, #f8f9fb);
+            padding: 2rem;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            border: 1px solid rgba(0,0,0,0.05);
+            height: 280px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        ">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📊</div>
+            <h3 style="color: #2c3e50; margin-bottom: 1rem;">Export Profil</h3>
+            <p style="color: #7f8c8d; line-height: 1.5;">
+                Download profil bisnis lengkap dalam format JSON untuk keperluan ekspor
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Call to action
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown("""
+        <div style="
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            padding: 2rem;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+            border: 1px solid rgba(255,255,255,0.2);
+        ">
+            <h3 style="color: white; margin-bottom: 1rem;">Siap Memulai Perjalanan Ekspor?</h3>
+            <p style="color: rgba(255,255,255,0.9); margin-bottom: 2rem;">
+                Klik tombol di bawah untuk mulai berbincang dengan Exporo dan bangun profil bisnis Anda!
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        if st.button("🚀 Mulai Chat dengan Exporo", type="primary", use_container_width=True):
+            st.session_state.page = 'chat'
+            st.rerun()

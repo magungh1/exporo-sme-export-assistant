@@ -233,7 +233,19 @@ def show_chat_interface():
 
     with col1:
         # Chat header
-        st.markdown('<div class="chat-header">💬 Exporo Chat Assistant</div>', unsafe_allow_html=True)
+        st.markdown("""
+        <div style="
+            background: linear-gradient(180deg, #2c3e50, #34495e);
+            color: white;
+            padding: 1.2rem;
+            border-radius: 15px;
+            margin-bottom: 1rem;
+            text-align: center;
+            font-weight: bold;
+            box-shadow: 0 6px 20px rgba(44, 62, 80, 0.3);
+            border: 1px solid rgba(255,255,255,0.2);
+        ">💬 Exporo Chat Assistant</div>
+        """, unsafe_allow_html=True)
         
         # Display chat history in a styled container with fixed height and auto-scroll
         chat_container = st.container(height=500, border=True)
@@ -345,20 +357,17 @@ def show_memory_bot():
     """Display the memory bot sidebar"""
     st.markdown("""
     <div style="
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 1rem;
+        background: linear-gradient(180deg, #2c3e50, #34495e);
+        color: white;
+        padding: 1.2rem;
         border-radius: 15px;
-        text-align: center;
         margin-bottom: 1rem;
-        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+        text-align: center;
+        font-weight: bold;
+        box-shadow: 0 6px 20px rgba(44, 62, 80, 0.3);
         border: 1px solid rgba(255,255,255,0.2);
-    ">
-        <h3 style="color: white; margin: 0; font-weight: 600;">🧠 Memory Bot</h3>
-    </div>
+    ">🧠 Memory Bot</div>
     """, unsafe_allow_html=True)
-    
-    # Show user ID
-    st.caption(f"Session ID: {st.session_state.user_id[:8]}...")
     
     if st.session_state.messages:
         # Extract data from conversation (2 latest messages)
@@ -368,51 +377,7 @@ def show_memory_bot():
         update_memory_bot(newly_extracted_data)
         
         # Display memory_bot as raw JSON
-        st.markdown("""
-        <div style="
-            background: linear-gradient(145deg, #f8f9fa, #e9ecef);
-            padding: 1rem;
-            border-radius: 10px;
-            border: 1px solid rgba(0,0,0,0.1);
-            margin: 1rem 0;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
-        ">
-        """, unsafe_allow_html=True)
-        
         st.code(json.dumps(st.session_state.memory_bot, indent=2, ensure_ascii=False), language="json")
-        
-        st.markdown("</div>", unsafe_allow_html=True)
-        
-        # Download button for memory_bot data
-        st.download_button(
-            label="Download JSON",
-            data=json.dumps(st.session_state.memory_bot, indent=2, ensure_ascii=False),
-            file_name=f"business_profile_{st.session_state.user_id[:8]}.json",
-            mime="application/json"
-        )
-        
-        # Gemini status with background
-        st.markdown("""
-        <div style="
-            background: linear-gradient(145deg, #ffffff, #f8f9fb);
-            padding: 1rem;
-            border-radius: 10px;
-            border: 1px solid rgba(0,0,0,0.05);
-            margin: 1rem 0;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-        ">
-        """, unsafe_allow_html=True)
-        
-        try:
-            init_gemini()
-            st.success("🤖 Connected to Gemini")
-        except ValueError as e:
-            st.error(f"⚠️ Configuration Error: {str(e)}")
-            st.info("💡 Create a .env file with your GEMINI_API_KEY or set it as an environment variable")
-        except Exception as e:
-            st.error(f"❌ Gemini API connection failed: {str(e)}")
-            
-        st.markdown("</div>", unsafe_allow_html=True)
             
     else:
         st.write("Mulai percakapan untuk melihat data yang diekstrak...")
@@ -431,7 +396,24 @@ def show_chat_reset_button():
         st.rerun()
 
 def show_full_chat_page():
-    """Display the complete chat page"""
-    show_welcome_message()
+    """Display the complete standalone chat page"""
+    # Chat page header
+    st.markdown("""
+    <div style="
+        background: linear-gradient(180deg, #2c3e50, #34495e);
+        padding: 1rem;
+        border-radius: 12px;
+        text-align: center;
+        margin-bottom: 1rem;
+        box-shadow: 0 4px 15px rgba(44, 62, 80, 0.3);
+        border: 1px solid rgba(255,255,255,0.2);
+    ">
+        <h2 style="color: white; margin: 0; font-size: 1.5rem;">💬 Chat dengan Exporo</h2>
+        <p style="color: rgba(255,255,255,0.9); margin: 0.3rem 0 0 0; font-size: 0.9rem;">
+            Asisten AI untuk profiling bisnis ekspor Anda
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
     show_chat_interface()
     show_chat_reset_button()

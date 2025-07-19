@@ -246,15 +246,28 @@ SHARED_CSS = """
         background: transparent;
     }
     
-    /* Sidebar & Memory Bot Styles */
-    .sidebar .element-container {
-        background: linear-gradient(145deg, #ffffff, #f8f9fb);
-        border-radius: 15px;
-        padding: 1.5rem;
-        margin-bottom: 1rem;
-        box-shadow: 0 6px 25px rgba(0,0,0,0.08);
-        border: 1px solid rgba(0,0,0,0.05);
-        backdrop-filter: blur(10px);
+    /* Sidebar Styles */
+    .stSidebar {
+        background: linear-gradient(180deg, #2c3e50, #34495e) !important;
+    }
+    
+    .stSidebar > div {
+        background: linear-gradient(180deg, #2c3e50, #34495e) !important;
+        color: white !important;
+    }
+    
+    .stSidebar .block-container {
+        background: transparent !important;
+        color: white !important;
+        padding: 2rem 1rem !important;
+    }
+    
+    .stSidebar .element-container {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0.2rem 0 !important;
+        margin: 0 !important;
     }
     
     /* Code Block Styling */
