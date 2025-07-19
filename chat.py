@@ -17,6 +17,8 @@ from config import GEMINI_API_KEY, USER_PROFILING_PROMPT, DATA_EXTRACTION_PROMPT
 @st.cache_resource
 def init_gemini():
     """Initialize and cache Gemini client"""
+    if not GEMINI_API_KEY or GEMINI_API_KEY == "your_gemini_api_key_here":
+        raise ValueError("GEMINI_API_KEY not configured. Please set it in your environment variables or .env file.")
     return genai.Client(api_key=GEMINI_API_KEY)
 
 def get_bot_response(user_input, conversation_history, uploaded_images=None):
@@ -202,7 +204,7 @@ def update_memory_bot(newly_extracted_data):
 def show_welcome_message():
     """Display welcome message for first-time users"""
     if len(st.session_state.messages) == 0:
-        col1, col2, col3 = st.columns([1, 2, 1])
+        _, col2, _ = st.columns([1, 2, 1])
         
         with col2:
             st.markdown('<div class="welcome-container">', unsafe_allow_html=True)
@@ -243,7 +245,7 @@ def show_chat_interface():
                 </div>
                 """, unsafe_allow_html=True)
             
-            for i, message in enumerate(st.session_state.messages):
+            for message in st.session_state.messages:
                 # Get timestamp - use message timestamp if available, otherwise current time
                 if 'timestamp' in message:
                     msg_time = datetime.fromisoformat(message['timestamp']).strftime("%H:%M")
@@ -366,8 +368,11 @@ def show_memory_bot():
         
         # Gemini status
         try:
-            client = init_gemini()
+            init_gemini()
             st.success("🤖 Connected to Gemini")
+        except ValueError as e:
+            st.error(f"⚠️ Configuration Error: {str(e)}")
+            st.info("💡 Create a .env file with your GEMINI_API_KEY or set it as an environment variable")
         except Exception as e:
             st.error(f"❌ Gemini API connection failed: {str(e)}")
             

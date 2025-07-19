@@ -15,3 +15,9 @@ venv/
 
 # Test files
 test.py
+
+# Environment variables
+.env
+
+# Database files
+*.db

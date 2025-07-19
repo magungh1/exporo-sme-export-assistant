@@ -3,10 +3,11 @@ Configuration file for Exporo SME Export Assistant
 Contains shared constants, API keys, and default data structures
 """
 
+import os
 from datetime import datetime
 
 # API Configuration
-GEMINI_API_KEY = "AIzaSyBNlRT5T_YkJ8QJBdVm6K54GQ1RqrlFJQ8"
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "AIzaSyBNlRT5T_YkJ8QJBdVm6K54GQ1RqrlFJQ8")
 DATABASE_NAME = "langkah_ekspor.db"
 
 # App Configuration
