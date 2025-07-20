@@ -61,6 +61,9 @@ make dev         # Run in development mode with file watching
 make install     # Install dependencies
 make validate    # Check environment setup
 make test        # Run basic functionality tests
+make format      # Format code with ruff
+make lint        # Lint code with ruff
+make fix         # Format and lint code with ruff
 make clean       # Clean up cache files
 make reset-db    # Reset the database
 ```
@@ -114,8 +117,8 @@ make run
 # Development mode with file watching
 make dev
 
-# Run tests and cleanup
-make test clean
+# Run tests, format, and cleanup
+make test fix clean
 ```
 
 ## 📁 File Structure

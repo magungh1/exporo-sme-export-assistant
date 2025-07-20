@@ -1,7 +1,7 @@
 # Exporo SME Export Assistant - Makefile
 # Simplifies common development and deployment tasks
 
-.PHONY: help run install clean test lint format check deps reset-db
+.PHONY: help run install clean test lint format fix check deps reset-db
 
 # Default target
 help:
@@ -18,8 +18,9 @@ help:
 	@echo "🧹 Development Tools:"
 	@echo "  make clean       - Clean up cache and temporary files"
 	@echo "  make reset-db    - Reset the SQLite database"
-	@echo "  make format      - Format code with black (if available)"
-	@echo "  make lint        - Run linting checks (if available)"
+	@echo "  make format      - Format code with ruff"
+	@echo "  make lint        - Run linting checks with ruff"
+	@echo "  make fix         - Format and lint code with ruff"
 	@echo "  make check       - Check imports and basic syntax"
 	@echo ""
 	@echo "🧪 Testing & Validation:"
@@ -73,25 +74,29 @@ reset-db:
 	rm -f data/langkah_ekspor.db
 	@echo "✅ Database reset! New database will be created on next run."
 
-# Format code (if black is available)
+# Format code with ruff
 format:
-	@echo "🎨 Formatting code..."
-	@if command -v black >/dev/null 2>&1; then \
-		black src/ --line-length 100; \
-		echo "✅ Code formatted with black!"; \
+	@echo "🎨 Formatting code with ruff..."
+	@if command -v ruff >/dev/null 2>&1; then \
+		ruff format src/; \
+		echo "✅ Code formatted with ruff!"; \
 	else \
-		echo "⚠️ black not available. Install with: pip install black"; \
+		echo "⚠️ ruff not available. Install with: pip install ruff"; \
 	fi
 
-# Lint code (if available)
+# Lint code with ruff
 lint:
-	@echo "🔍 Running linting checks..."
-	@if command -v flake8 >/dev/null 2>&1; then \
-		flake8 src/ --max-line-length=100 --ignore=E203,W503; \
-		echo "✅ Linting completed!"; \
+	@echo "🔍 Running linting checks with ruff..."
+	@if command -v ruff >/dev/null 2>&1; then \
+		ruff check src/ --fix; \
+		echo "✅ Linting completed with ruff!"; \
 	else \
-		echo "⚠️ flake8 not available. Install with: pip install flake8"; \
+		echo "⚠️ ruff not available. Install with: pip install ruff"; \
 	fi
+
+# Format and lint code with ruff
+fix: format lint
+	@echo "🚀 Code formatting and linting completed!"
 
 # Check imports and basic syntax
 check:
