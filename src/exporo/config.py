@@ -34,6 +34,18 @@ DEFAULT_EXTRACTED_DATA = {
         "country": "Indonesia"
     },
     "business_background": "Not specified",
+    "export_readiness": {
+        "target_countries": [],
+        "export_experience": "Not specified",
+        "current_markets": [],
+        "export_goals": "Not specified",
+        "budget_for_export": "Not specified",
+        "timeline_preference": "Not specified",
+        "main_challenges": [],
+        "certifications_obtained": [],
+        "export_volume_target": "Not specified"
+    },
+    "assessment_history": [],
     "extraction_timestamp": datetime.now().isoformat(),
     "conversation_language": "Indonesian"
 }
@@ -114,6 +126,53 @@ DATA_EXTRACTION_PROMPT = """You are a Data Extraction Assistant. Your role is to
 
 **Output Format:**
 Return clean JSON without any markdown formatting or explanation."""
+
+EXPORT_DATA_EXTRACTION_PROMPT = """You are a Data Extraction Assistant specializing in export readiness information. Parse the conversation and extract structured export-related data.
+
+**Extract the following export readiness information:**
+
+{{
+  "export_readiness": {{
+    "target_countries": ["list of countries mentioned for export"],
+    "export_experience": "string - previous export experience level",
+    "current_markets": ["list of current markets they sell to"],
+    "export_goals": "string - their export objectives and goals",
+    "budget_for_export": "string - available budget for export preparation",
+    "timeline_preference": "string - when they want to start exporting",
+    "main_challenges": ["list of export challenges they mention"],
+    "certifications_obtained": ["list of certifications they already have"],
+    "export_volume_target": "string - how much they want to export"
+  }},
+  "assessment_history": [
+    {{
+      "country": "string - assessed country",
+      "score": "number - readiness score if mentioned",
+      "timestamp": "ISO 8601 timestamp",
+      "status": "string - assessment result"
+    }}
+  ]
+}}
+
+**Extraction Rules:**
+- Only extract explicitly mentioned export-related information
+- For target_countries: include any country mentioned as export destination
+- For export_experience: "Beginner", "Some Experience", "Experienced", or specific details
+- For current_markets: domestic, regional, or international markets mentioned
+- For export_goals: revenue targets, market expansion goals, business objectives
+- For budget_for_export: any budget amounts or ranges mentioned
+- For timeline_preference: "Immediately", "3-6 months", "1 year", etc.
+- For main_challenges: barriers, concerns, or difficulties mentioned
+- For certifications_obtained: any standards, certifications, or licenses they have
+- For export_volume_target: quantities, percentages, or volume goals mentioned
+- If information is unclear or not mentioned, use "Not specified" or empty array []
+
+**Assessment History:**
+- Extract any mention of previous export assessments or readiness checks
+- Include country assessed, any scores mentioned, and outcomes
+- If no assessment history mentioned, return empty array
+
+**Output Format:**
+Return clean JSON without markdown formatting or explanations."""
 
 EXPORT_READINESS_PROMPT = """You are an expert international trade consultant specializing in Indonesian SME export readiness assessment.
 

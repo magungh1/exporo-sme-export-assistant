@@ -202,6 +202,44 @@ def get_certification_requirements(country_code: str, product_category: str) -> 
     """Get certification requirements for specific country and product category"""
     return CERTIFICATION_REQUIREMENTS.get(country_code, {}).get(product_category, [])
 
+def save_assessment_to_memory_bot(assessment_results: Dict):
+    """Save assessment results to memory bot for tracking"""
+    if 'memory_bot' not in st.session_state:
+        st.session_state.memory_bot = DEFAULT_EXTRACTED_DATA.copy()
+    
+    # Create assessment record
+    assessment_record = {
+        "country": assessment_results['country']['name'],
+        "country_code": assessment_results['country']['code'],
+        "score": assessment_results['overall_score'],
+        "timestamp": datetime.now().isoformat(),
+        "status": assessment_results.get('export_readiness_level', 'Assessed'),
+        "product": assessment_results['product_info']['name'],
+        "category": assessment_results['product_info']['category']
+    }
+    
+    # Add to assessment history
+    if 'assessment_history' not in st.session_state.memory_bot:
+        st.session_state.memory_bot['assessment_history'] = []
+    
+    # Remove duplicate assessments for the same country
+    st.session_state.memory_bot['assessment_history'] = [
+        record for record in st.session_state.memory_bot['assessment_history']
+        if record.get('country') != assessment_results['country']['name']
+    ]
+    
+    # Add new assessment record
+    st.session_state.memory_bot['assessment_history'].append(assessment_record)
+    
+    # Update export readiness data
+    if 'export_readiness' not in st.session_state.memory_bot:
+        st.session_state.memory_bot['export_readiness'] = DEFAULT_EXTRACTED_DATA['export_readiness'].copy()
+    
+    # Add target country if not already present
+    target_countries = st.session_state.memory_bot['export_readiness']['target_countries']
+    if assessment_results['country']['name'] not in target_countries:
+        target_countries.append(assessment_results['country']['name'])
+
 def analyze_export_readiness() -> Dict:
     """Perform comprehensive AI-powered export readiness analysis"""
     memory_data = get_memory_bot_data()
@@ -594,7 +632,12 @@ def show_export_readiness_page():
                 with st.spinner("🔄 Analyzing export readiness..."):
                     results = analyze_export_readiness()
                     st.session_state.assessment_results = results
-                st.success("✅ Assessment completed!")
+                    
+                    # Save assessment to memory bot for tracking
+                    if results and 'error' not in results:
+                        save_assessment_to_memory_bot(results)
+                        
+                st.success("✅ Assessment completed and saved to Memory Bot!")
                 st.rerun()
     
     # Step 5: Display Results
