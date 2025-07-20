@@ -7,7 +7,7 @@ import os
 from datetime import datetime
 
 # API Configuration
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "AIzaSyBNlRT5T_YkJ8QJBdVm6K54GQ1RqrlFJQ8")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 DATABASE_NAME = "data/langkah_ekspor.db"
 
 # App Configuration
