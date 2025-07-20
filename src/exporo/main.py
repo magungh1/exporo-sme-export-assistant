@@ -27,12 +27,10 @@ def main():
     init_db()
     init_auth_session_state()
     
-    # Lazy import and initialize chat/export modules only when needed
+    # Lazy import and initialize chat module only when needed
     if st.session_state.get('logged_in', False):
         from .chat import init_chat_session_state
-        from .export_readiness import init_export_readiness_session_state
         init_chat_session_state()
-        init_export_readiness_session_state()
     
     # Show navigation
     show_navigation()
@@ -51,9 +49,6 @@ def main():
         elif st.session_state.page == 'chat':
             from .chat import show_full_chat_page
             show_full_chat_page()
-        elif st.session_state.page == 'export-readiness':
-            from .export_readiness import show_export_readiness_page
-            show_export_readiness_page()
         else:
             # Default to welcome page for logged-in users
             st.session_state.page = 'welcome'

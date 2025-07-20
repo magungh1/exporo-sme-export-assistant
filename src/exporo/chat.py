@@ -11,7 +11,7 @@ import base64
 import io
 from google import genai
 from google.genai import types
-from .config import GEMINI_API_KEY, USER_PROFILING_PROMPT, DATA_EXTRACTION_PROMPT, EXPORT_DATA_EXTRACTION_PROMPT, DEFAULT_EXTRACTED_DATA
+from .config import GEMINI_API_KEY, USER_PROFILING_PROMPT, DATA_EXTRACTION_PROMPT, EXPORT_DATA_EXTRACTION_PROMPT, EXPORT_READINESS_PROMPT, DEFAULT_EXTRACTED_DATA
 
 # Initialize Gemini client
 @st.cache_resource
@@ -23,6 +23,41 @@ def init_gemini():
 
 def get_bot_response(user_input, conversation_history, uploaded_images=None):
     """Get bot response using Gemini API with user profiling prompt"""
+    
+    # Check if user is requesting export analysis
+    memory_data = st.session_state.get('memory_bot', DEFAULT_EXTRACTED_DATA)
+    analysis_requested, target_country = detect_export_analysis_request(user_input, memory_data)
+    
+    # If export analysis is requested and we have a target country, perform analysis
+    if analysis_requested and target_country:
+        return perform_chat_based_export_analysis(target_country, memory_data)
+    
+    # If analysis requested but no country, ask for country specification
+    if analysis_requested and not target_country:
+        return """
+🤔 **Saya siap melakukan analisis kesiapan ekspor untuk Anda!**
+
+Namun, saya perlu tahu negara tujuan ekspor yang Anda inginkan. Berikut beberapa pilihan:
+
+🌏 **Negara yang Tersedia:**
+• 🇲🇾 **Malaysia** - Tingkat kesulitan: Rendah
+• 🇸🇬 **Singapura** - Tingkat kesulitan: Sedang  
+• 🇦🇺 **Australia** - Tingkat kesulitan: Sedang
+• 🇰🇷 **Korea Selatan** - Tingkat kesulitan: Sedang
+• 🇺🇸 **Amerika Serikat** - Tingkat kesulitan: Tinggi
+• 🇪🇺 **Uni Eropa** - Tingkat kesulitan: Tinggi
+• 🇯🇵 **Jepang** - Tingkat kesulitan: Tinggi
+• 🇨🇳 **China** - Tingkat kesulitan: Tinggi
+
+💡 **Contoh perintah:**
+- "Cek kesiapan ekspor ke Malaysia"
+- "Analisis ekspor ke Amerika Serikat"
+- "Siap ekspor ke Singapura tidak?"
+
+Negara mana yang ingin Anda analisis?
+        """
+    
+    # Normal chat flow
     client = init_gemini()
     
     # Prepare conversation content for Gemini
@@ -37,7 +72,7 @@ def get_bot_response(user_input, conversation_history, uploaded_images=None):
     # Add a model response acknowledging the system prompt
     contents.append(types.Content(
         role="model", 
-        parts=[types.Part.from_text(text="Saya Exporo, siap membantu sebagai Business Profile Assistant untuk UKM Indonesia. Saya akan mengumpulkan informasi bisnis secara bertahap dan ramah.")]
+        parts=[types.Part.from_text(text="Saya Exporo, siap membantu sebagai Business Profile Assistant untuk UKM Indonesia. Saya akan mengumpulkan informasi bisnis secara bertahap dan ramah serta membantu analisis kesiapan ekspor.")]
     ))
     
     # Add conversation history
@@ -481,6 +516,185 @@ def show_chat_reset_button():
     if st.button("🔄 Reset Chat"):
         reset_chat()
         st.rerun()
+
+def perform_chat_based_export_analysis(target_country: str, memory_data: dict) -> str:
+    """Perform export readiness analysis through chat and return formatted response"""
+    client = init_gemini()
+    
+    # Get product details from memory
+    company_name = memory_data.get('company_name', 'Not specified')
+    product_name = memory_data.get('product_details', {}).get('name', 'Product')
+    product_category = memory_data.get('product_category', 'Other')
+    product_description = memory_data.get('product_details', {}).get('description', 'No description')
+    
+    # Get production info
+    capacity = memory_data.get('production_capacity', {})
+    capacity_str = f"{capacity.get('amount', 0)} {capacity.get('unit', '')} per {capacity.get('timeframe', '')}"
+    
+    location = memory_data.get('production_location', {})
+    location_str = f"{location.get('city', '')}, {location.get('province', '')}, Indonesia"
+    
+    # Country mapping for difficulty and market size
+    countries_info = {
+        "Amerika Serikat": {"difficulty": "High", "market_size": "Large"},
+        "US": {"difficulty": "High", "market_size": "Large"},
+        "Uni Eropa": {"difficulty": "High", "market_size": "Large"},
+        "EU": {"difficulty": "High", "market_size": "Large"},
+        "Jepang": {"difficulty": "High", "market_size": "Large"},
+        "Japan": {"difficulty": "High", "market_size": "Large"},
+        "Singapura": {"difficulty": "Medium", "market_size": "Medium"},
+        "Singapore": {"difficulty": "Medium", "market_size": "Medium"},
+        "Malaysia": {"difficulty": "Low", "market_size": "Medium"},
+        "Australia": {"difficulty": "Medium", "market_size": "Large"},
+        "Korea Selatan": {"difficulty": "Medium", "market_size": "Large"},
+        "South Korea": {"difficulty": "Medium", "market_size": "Large"},
+        "China": {"difficulty": "High", "market_size": "Very Large"},
+        "Cina": {"difficulty": "High", "market_size": "Very Large"}
+    }
+    
+    country_info = countries_info.get(target_country, {"difficulty": "Medium", "market_size": "Medium"})
+    
+    try:
+        # Prepare the prompt with actual data
+        formatted_prompt = EXPORT_READINESS_PROMPT.format(
+            target_country=target_country,
+            company_name=company_name,
+            product_name=product_name,
+            product_category=product_category,
+            product_description=product_description,
+            production_capacity=capacity_str,
+            production_location=location_str,
+            market_difficulty=country_info['difficulty'],
+            market_size=country_info['market_size'],
+            required_certifications="Sertifikasi yang diperlukan akan dijelaskan dalam analisis"
+        )
+        
+        # Send to Gemini for analysis
+        response = client.models.generate_content(
+            model='gemini-2.0-flash-exp',
+            contents=formatted_prompt
+        )
+        
+        # Parse the AI response
+        ai_response = response.text.strip()
+        
+        # Try to parse as JSON first for structured data
+        try:
+            assessment_data = json.loads(ai_response.replace("```json", "").replace("```", "").strip())
+            
+            # Convert to readable format for chat
+            readable_response = f"""
+🎯 **ANALISIS KESIAPAN EKSPOR - {target_country}**
+
+📊 **Skor Keseluruhan: {assessment_data.get('overall_score', 'N/A')}/100**
+
+📈 **Breakdown per Kategori:**
+• Kepatuhan Regulasi: {assessment_data.get('category_scores', {}).get('regulatory_compliance', 'N/A')}/100
+• Viabilitas Pasar: {assessment_data.get('category_scores', {}).get('market_viability', 'N/A')}/100  
+• Kesiapan Dokumentasi: {assessment_data.get('category_scores', {}).get('documentation_readiness', 'N/A')}/100
+• Posisi Kompetitif: {assessment_data.get('category_scores', {}).get('competitive_positioning', 'N/A')}/100
+
+✅ **Rencana Aksi:**
+{chr(10).join([f"{i+1}. {item}" for i, item in enumerate(assessment_data.get('action_items', []))])}
+
+⏱️ **Estimasi Waktu Persiapan:** {assessment_data.get('timeline_estimate', 'Tidak ditentukan')}
+
+🎯 **Insight Pasar:**
+{assessment_data.get('market_insights', 'Tidak tersedia')}
+
+💪 **Keunggulan Kompetitif:**
+{chr(10).join([f"• {adv}" for adv in assessment_data.get('competitive_advantages', [])])}
+
+⚠️ **Tantangan Potensial:**
+{chr(10).join([f"• {challenge}" for challenge in assessment_data.get('potential_challenges', [])])}
+
+🏆 **Status Kesiapan:** {assessment_data.get('export_readiness_level', 'Tidak dinilai')}
+
+🤖 *Analisis ini dibuat menggunakan Gemini AI berdasarkan profil bisnis Anda.*
+            """
+            
+            # Save assessment to memory bot
+            if 'assessment_history' not in st.session_state.memory_bot:
+                st.session_state.memory_bot['assessment_history'] = []
+            
+            assessment_record = {
+                "country": target_country,
+                "score": assessment_data.get('overall_score', 0),
+                "timestamp": datetime.now().isoformat(),
+                "status": assessment_data.get('export_readiness_level', 'Assessed'),
+                "product": product_name,
+                "category": product_category
+            }
+            
+            # Remove duplicate assessments for the same country
+            st.session_state.memory_bot['assessment_history'] = [
+                record for record in st.session_state.memory_bot['assessment_history']
+                if record.get('country') != target_country
+            ]
+            
+            st.session_state.memory_bot['assessment_history'].append(assessment_record)
+            
+            return readable_response
+            
+        except json.JSONDecodeError:
+            # If not JSON, return the response as is with formatting
+            return f"""
+🎯 **ANALISIS KESIAPAN EKSPOR - {target_country}**
+
+{ai_response}
+
+🤖 *Analisis ini dibuat menggunakan Gemini AI berdasarkan profil bisnis Anda.*
+            """
+            
+    except Exception as e:
+        return f"""
+❌ **Maaf, terjadi kesalahan saat menganalisis kesiapan ekspor:**
+
+{str(e)}
+
+💡 **Saran:** Coba lagi dalam beberapa saat atau pastikan koneksi internet Anda stabil.
+        """
+
+def detect_export_analysis_request(user_input: str, memory_data: dict) -> tuple[bool, str]:
+    """Detect if user is requesting export analysis and extract target country"""
+    user_input_lower = user_input.lower()
+    
+    # Keywords that trigger export analysis
+    analysis_triggers = [
+        'cek kesiapan ekspor', 'analisis ekspor', 'export readiness', 
+        'siap ekspor', 'kesiapan ekspor', 'analisis kesiapan'
+    ]
+    
+    # Country keywords
+    countries = {
+        'amerika': 'Amerika Serikat', 'us': 'Amerika Serikat', 'usa': 'Amerika Serikat',
+        'eropa': 'Uni Eropa', 'eu': 'Uni Eropa', 'europe': 'Uni Eropa',
+        'jepang': 'Jepang', 'japan': 'Jepang',
+        'singapura': 'Singapura', 'singapore': 'Singapura',
+        'malaysia': 'Malaysia',
+        'australia': 'Australia',
+        'korea': 'Korea Selatan', 'south korea': 'Korea Selatan',
+        'china': 'China', 'cina': 'China'
+    }
+    
+    # Check if analysis is requested
+    analysis_requested = any(trigger in user_input_lower for trigger in analysis_triggers)
+    
+    # Extract country if mentioned
+    target_country = None
+    for keyword, country_name in countries.items():
+        if keyword in user_input_lower:
+            target_country = country_name
+            break
+    
+    # If analysis requested but no country specified, check memory for target countries
+    if analysis_requested and not target_country:
+        export_readiness = memory_data.get('export_readiness', {})
+        target_countries = export_readiness.get('target_countries', [])
+        if target_countries:
+            target_country = target_countries[0]  # Use first target country
+    
+    return analysis_requested, target_country
 
 def show_full_chat_page():
     """Display the complete standalone chat page"""

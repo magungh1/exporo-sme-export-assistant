@@ -437,12 +437,22 @@ def show_navigation():
                 st.session_state.page = 'kualitas'
                 st.info("⭐ Kualitas Produk Saya - Coming Soon!")
                 
-            if st.button("🌍  Export Readiness Check", 
-                        type="primary" if st.session_state.page == 'export-readiness' else "secondary", 
-                        use_container_width=True,
-                        key="nav_export_readiness"):
-                st.session_state.page = 'export-readiness'
-                st.rerun()
+            st.markdown("""
+            <div style="
+                background: linear-gradient(135deg, rgba(25, 135, 84, 0.1), rgba(25, 135, 84, 0.05));
+                padding: 0.8rem;
+                border-radius: 10px;
+                margin: 0.5rem 0;
+                border-left: 4px solid #198754;
+            ">
+                <div style="color: #198754; font-weight: 600; font-size: 0.9rem;">
+                    🌍 Export Readiness Check
+                </div>
+                <div style="color: #6c757d; font-size: 0.8rem; margin-top: 0.3rem;">
+                    💬 Integrated dalam Chat - Ketik "cek kesiapan ekspor"
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
                 
             if st.button("🌐  Cek Pasar Global", 
                         type="primary" if st.session_state.page == 'pasar-global' else "secondary", 
