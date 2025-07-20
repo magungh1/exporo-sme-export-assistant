@@ -5,6 +5,10 @@ Contains shared constants, API keys, and default data structures
 
 import os
 from datetime import datetime
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # API Configuration
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
