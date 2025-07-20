@@ -15,14 +15,22 @@ import base64
 import io
 
 # For text embeddings and FAISS (will be implemented in Phase 2)
-try:
-    import faiss
-    import numpy as np
-    from sentence_transformers import SentenceTransformer
-    EMBEDDING_AVAILABLE = True
-except ImportError:
-    EMBEDDING_AVAILABLE = False
-    st.warning("⚠️ Text embedding libraries not available. Some features may be limited.")
+# Lazy import to improve startup time
+EMBEDDING_AVAILABLE = None
+
+def check_embedding_availability():
+    """Lazy check for embedding libraries availability"""
+    global EMBEDDING_AVAILABLE
+    if EMBEDDING_AVAILABLE is None:
+        try:
+            import faiss
+            import numpy as np
+            from sentence_transformers import SentenceTransformer
+            EMBEDDING_AVAILABLE = True
+        except ImportError:
+            EMBEDDING_AVAILABLE = False
+            st.warning("⚠️ Text embedding libraries not available. Some features may be limited.")
+    return EMBEDDING_AVAILABLE
 
 from .config import GEMINI_API_KEY, DEFAULT_EXTRACTED_DATA, EXPORT_READINESS_PROMPT
 from .chat import init_gemini
