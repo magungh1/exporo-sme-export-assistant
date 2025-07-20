@@ -77,22 +77,14 @@ reset-db:
 # Format code with ruff
 format:
 	@echo "🎨 Formatting code with ruff..."
-	@if command -v ruff >/dev/null 2>&1; then \
-		ruff format src/; \
-		echo "✅ Code formatted with ruff!"; \
-	else \
-		echo "⚠️ ruff not available. Install with: pip install ruff"; \
-	fi
+	uv run ruff format src/
+	@echo "✅ Code formatted with ruff!"
 
 # Lint code with ruff
 lint:
 	@echo "🔍 Running linting checks with ruff..."
-	@if command -v ruff >/dev/null 2>&1; then \
-		ruff check src/ --fix; \
-		echo "✅ Linting completed with ruff!"; \
-	else \
-		echo "⚠️ ruff not available. Install with: pip install ruff"; \
-	fi
+	uv run ruff check src/ --fix
+	@echo "✅ Linting completed with ruff!"
 
 # Format and lint code with ruff
 fix: format lint

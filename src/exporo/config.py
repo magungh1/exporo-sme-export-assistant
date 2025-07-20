@@ -22,20 +22,20 @@ APP_ICON = "🚀"
 DEFAULT_EXTRACTED_DATA = {
     "company_name": "Not specified",
     "product_details": {
-        "name": "Not specified", 
-        "description": "Not specified", 
-        "unique_features": "Not specified"
+        "name": "Not specified",
+        "description": "Not specified",
+        "unique_features": "Not specified",
     },
     "production_capacity": {
-        "amount": 0, 
-        "unit": "Not specified", 
-        "timeframe": "Not specified"
+        "amount": 0,
+        "unit": "Not specified",
+        "timeframe": "Not specified",
     },
     "product_category": "Not specified",
     "production_location": {
-        "city": "Not specified", 
-        "province": "Not specified", 
-        "country": "Indonesia"
+        "city": "Not specified",
+        "province": "Not specified",
+        "country": "Indonesia",
     },
     "business_background": "Not specified",
     "export_readiness": {
@@ -47,11 +47,11 @@ DEFAULT_EXTRACTED_DATA = {
         "timeline_preference": "Not specified",
         "main_challenges": [],
         "certifications_obtained": [],
-        "export_volume_target": "Not specified"
+        "export_volume_target": "Not specified",
     },
     "assessment_history": [],
     "extraction_timestamp": datetime.now().isoformat(),
-    "conversation_language": "Indonesian"
+    "conversation_language": "Indonesian",
 }
 
 # Bot prompts
