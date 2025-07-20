@@ -437,12 +437,19 @@ def show_navigation():
                 st.session_state.page = 'kualitas'
                 st.info("⭐ Kualitas Produk Saya - Coming Soon!")
                 
-            if st.button("🌍  Cek Pasar Global", 
+            if st.button("🌍  Export Readiness Check", 
+                        type="primary" if st.session_state.page == 'export-readiness' else "secondary", 
+                        use_container_width=True,
+                        key="nav_export_readiness"):
+                st.session_state.page = 'export-readiness'
+                st.rerun()
+                
+            if st.button("🌐  Cek Pasar Global", 
                         type="primary" if st.session_state.page == 'pasar-global' else "secondary", 
                         use_container_width=True,
                         key="nav_pasar"):
                 st.session_state.page = 'pasar-global'
-                st.info("🌍 Cek Pasar Global - Coming Soon!")
+                st.info("🌐 Cek Pasar Global - Coming Soon!")
                 
             if st.button("💬  Diskusi dengan Exporo", 
                         type="primary" if st.session_state.page == 'chat' else "secondary", 

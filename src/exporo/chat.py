@@ -11,7 +11,7 @@ import base64
 import io
 from google import genai
 from google.genai import types
-from .config import GEMINI_API_KEY, USER_PROFILING_PROMPT, DATA_EXTRACTION_PROMPT, DEFAULT_EXTRACTED_DATA
+from .config import GEMINI_API_KEY, USER_PROFILING_PROMPT, DATA_EXTRACTION_PROMPT, EXPORT_DATA_EXTRACTION_PROMPT, DEFAULT_EXTRACTED_DATA
 
 # Initialize Gemini client
 @st.cache_resource
@@ -163,6 +163,63 @@ def init_chat_session_state():
         st.session_state.extracted_data = DEFAULT_EXTRACTED_DATA.copy()
     if 'memory_bot' not in st.session_state:
         st.session_state.memory_bot = DEFAULT_EXTRACTED_DATA.copy()
+
+def extract_export_data_from_conversation(conversation_history):
+    """Extract export readiness data using Gemini API with export-specific extraction prompt"""
+    client = init_gemini()
+    
+    # Use the latest 4 messages to capture more export-related context
+    latest_messages = conversation_history[-4:] if len(conversation_history) >= 4 else conversation_history
+    
+    # Prepare conversation text
+    conversation_text = "\n".join([f"{msg['role']}: {msg.get('content', '')}" for msg in latest_messages])
+    
+    # Check if conversation contains export-related keywords
+    export_keywords = ['export', 'ekspor', 'international', 'negara', 'country', 'market', 'pasar', 'certification', 'sertifikasi', 'readiness']
+    has_export_content = any(keyword.lower() in conversation_text.lower() for keyword in export_keywords)
+    
+    if not has_export_content:
+        return {}
+    
+    # Prepare contents for Gemini
+    contents = [
+        types.Content(
+            role="user",
+            parts=[types.Part.from_text(text=EXPORT_DATA_EXTRACTION_PROMPT)]
+        ),
+        types.Content(
+            role="model", 
+            parts=[types.Part.from_text(text="I understand. I will extract structured export readiness data from the conversation and return it as clean JSON.")]
+        ),
+        types.Content(
+            role="user",
+            parts=[types.Part.from_text(text=f"Extract export data from this conversation:\n\n{conversation_text}")]
+        )
+    ]
+    
+    try:
+        generate_config = types.GenerateContentConfig(
+            response_mime_type="application/json",
+            max_output_tokens=1000,
+            temperature=0.1
+        )
+        
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=contents,
+            config=generate_config
+        )
+        
+        # Parse JSON response
+        json_text = response.text.strip() if response.text else ""
+        # Remove markdown formatting if present
+        if json_text.startswith("```json"):
+            json_text = json_text.replace("```json", "").replace("```", "").strip()
+        
+        return json.loads(json_text)
+    except Exception as e:
+        print(f"Error extracting export data: {e}")
+        return {}
 
 def update_memory_bot(newly_extracted_data):
     """Update memory_bot with only non-null values from extracted_data"""
@@ -370,14 +427,44 @@ def show_memory_bot():
     """, unsafe_allow_html=True)
     
     if st.session_state.messages:
-        # Extract data from conversation (2 latest messages)
+        # Extract basic business data from conversation (2 latest messages)
         newly_extracted_data = extract_data_from_conversation(st.session_state.messages)
+        
+        # Extract export readiness data from conversation (4 latest messages)
+        export_data = extract_export_data_from_conversation(st.session_state.messages)
+        
+        # Merge export data with business data
+        if export_data:
+            if 'export_readiness' in export_data:
+                newly_extracted_data['export_readiness'] = export_data['export_readiness']
+            if 'assessment_history' in export_data:
+                newly_extracted_data['assessment_history'] = export_data['assessment_history']
         
         # Update memory bot
         update_memory_bot(newly_extracted_data)
         
-        # Display memory_bot as raw JSON
-        st.code(json.dumps(st.session_state.memory_bot, indent=2, ensure_ascii=False), language="json")
+        # Display memory_bot with enhanced export information
+        memory_data = st.session_state.memory_bot
+        
+        # Show business profile section
+        st.markdown("**👤 Business Profile**")
+        business_data = {
+            k: v for k, v in memory_data.items() 
+            if k not in ['export_readiness', 'assessment_history']
+        }
+        st.code(json.dumps(business_data, indent=2, ensure_ascii=False), language="json")
+        
+        # Show export readiness section if data exists
+        export_readiness = memory_data.get('export_readiness', {})
+        if export_readiness and any(v != "Not specified" and v != [] for v in export_readiness.values()):
+            st.markdown("**🌍 Export Readiness Profile**")
+            st.code(json.dumps(export_readiness, indent=2, ensure_ascii=False), language="json")
+        
+        # Show assessment history if exists
+        assessment_history = memory_data.get('assessment_history', [])
+        if assessment_history:
+            st.markdown("**📊 Assessment History**")
+            st.code(json.dumps(assessment_history, indent=2, ensure_ascii=False), language="json")
             
     else:
         st.write("Mulai percakapan untuk melihat data yang diekstrak...")

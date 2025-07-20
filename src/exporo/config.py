@@ -5,9 +5,13 @@ Contains shared constants, API keys, and default data structures
 
 import os
 from datetime import datetime
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # API Configuration
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "AIzaSyBNlRT5T_YkJ8QJBdVm6K54GQ1RqrlFJQ8")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 DATABASE_NAME = "data/langkah_ekspor.db"
 
 # App Configuration
@@ -34,6 +38,18 @@ DEFAULT_EXTRACTED_DATA = {
         "country": "Indonesia"
     },
     "business_background": "Not specified",
+    "export_readiness": {
+        "target_countries": [],
+        "export_experience": "Not specified",
+        "current_markets": [],
+        "export_goals": "Not specified",
+        "budget_for_export": "Not specified",
+        "timeline_preference": "Not specified",
+        "main_challenges": [],
+        "certifications_obtained": [],
+        "export_volume_target": "Not specified"
+    },
+    "assessment_history": [],
     "extraction_timestamp": datetime.now().isoformat(),
     "conversation_language": "Indonesian"
 }
@@ -114,6 +130,117 @@ DATA_EXTRACTION_PROMPT = """You are a Data Extraction Assistant. Your role is to
 
 **Output Format:**
 Return clean JSON without any markdown formatting or explanation."""
+
+EXPORT_DATA_EXTRACTION_PROMPT = """You are a Data Extraction Assistant specializing in export readiness information. Parse the conversation and extract structured export-related data.
+
+**Extract the following export readiness information:**
+
+{{
+  "export_readiness": {{
+    "target_countries": ["list of countries mentioned for export"],
+    "export_experience": "string - previous export experience level",
+    "current_markets": ["list of current markets they sell to"],
+    "export_goals": "string - their export objectives and goals",
+    "budget_for_export": "string - available budget for export preparation",
+    "timeline_preference": "string - when they want to start exporting",
+    "main_challenges": ["list of export challenges they mention"],
+    "certifications_obtained": ["list of certifications they already have"],
+    "export_volume_target": "string - how much they want to export"
+  }},
+  "assessment_history": [
+    {{
+      "country": "string - assessed country",
+      "score": "number - readiness score if mentioned",
+      "timestamp": "ISO 8601 timestamp",
+      "status": "string - assessment result"
+    }}
+  ]
+}}
+
+**Extraction Rules:**
+- Only extract explicitly mentioned export-related information
+- For target_countries: include any country mentioned as export destination
+- For export_experience: "Beginner", "Some Experience", "Experienced", or specific details
+- For current_markets: domestic, regional, or international markets mentioned
+- For export_goals: revenue targets, market expansion goals, business objectives
+- For budget_for_export: any budget amounts or ranges mentioned
+- For timeline_preference: "Immediately", "3-6 months", "1 year", etc.
+- For main_challenges: barriers, concerns, or difficulties mentioned
+- For certifications_obtained: any standards, certifications, or licenses they have
+- For export_volume_target: quantities, percentages, or volume goals mentioned
+- If information is unclear or not mentioned, use "Not specified" or empty array []
+
+**Assessment History:**
+- Extract any mention of previous export assessments or readiness checks
+- Include country assessed, any scores mentioned, and outcomes
+- If no assessment history mentioned, return empty array
+
+**Output Format:**
+Return clean JSON without markdown formatting or explanations."""
+
+EXPORT_READINESS_PROMPT = """You are an expert international trade consultant specializing in Indonesian SME export readiness assessment.
+
+Analyze the following product for export readiness to {target_country}:
+
+**Product Information:**
+- Company: {company_name}
+- Product Name: {product_name}
+- Category: {product_category}
+- Description: {product_description}
+- Production Capacity: {production_capacity}
+- Production Location: {production_location}
+
+**Target Market:** {target_country} ({market_difficulty} difficulty, {market_size} market)
+
+**Assessment Criteria:**
+1. **Regulatory Compliance (25%)**: Does the product meet {target_country}'s import regulations, safety standards, and labeling requirements?
+2. **Market Viability (25%)**: Is there demand for this product in {target_country}? How competitive is the market?
+3. **Documentation Readiness (25%)**: Are required certifications, permits, and export documentation obtainable?
+4. **Competitive Positioning (25%)**: How well-positioned is this product against competitors in {target_country}?
+
+**Required Certifications for {target_country}:**
+{required_certifications}
+
+**Analysis Instructions:**
+- Provide specific, actionable insights based on the product category and target market
+- Consider {target_country}'s specific import regulations and market preferences
+- Evaluate the production capacity relative to market demand
+- Assess the geographic advantage/disadvantage of production location
+- Include realistic timeline estimates for certification and market entry
+
+**Output Format:**
+Return ONLY valid JSON with this exact structure:
+{{
+  "overall_score": [number 0-100],
+  "category_scores": {{
+    "regulatory_compliance": [number 0-100],
+    "market_viability": [number 0-100], 
+    "documentation_readiness": [number 0-100],
+    "competitive_positioning": [number 0-100]
+  }},
+  "action_items": [
+    "Specific action item 1",
+    "Specific action item 2",
+    "Specific action item 3"
+  ],
+  "timeline_estimate": "[X weeks/months]",
+  "market_insights": "Brief market analysis and recommendations",
+  "certification_priority": [
+    "Most critical certification first",
+    "Second priority certification"
+  ],
+  "competitive_advantages": [
+    "Key advantage 1",
+    "Key advantage 2"
+  ],
+  "potential_challenges": [
+    "Main challenge 1", 
+    "Main challenge 2"
+  ],
+  "export_readiness_level": "[Ready/Needs Preparation/Significant Work Required]"
+}}
+
+Provide realistic, practical advice based on actual export requirements and market conditions."""
 
 # CSS Styles
 SHARED_CSS = """

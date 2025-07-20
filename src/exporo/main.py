@@ -10,6 +10,7 @@ from .auth import (
     show_login_page, show_signup_page, show_welcome_landing_page, get_user_count
 )
 from .chat import init_chat_session_state, show_full_chat_page
+from .export_readiness import init_export_readiness_session_state, show_export_readiness_page
 
 def main():
     """Main application entry point"""
@@ -28,6 +29,7 @@ def main():
     init_db()
     init_auth_session_state()
     init_chat_session_state()
+    init_export_readiness_session_state()
     
     # Show navigation
     show_navigation()
@@ -45,6 +47,8 @@ def main():
             show_welcome_landing_page()
         elif st.session_state.page == 'chat':
             show_full_chat_page()
+        elif st.session_state.page == 'export-readiness':
+            show_export_readiness_page()
         else:
             # Default to welcome page for logged-in users
             st.session_state.page = 'welcome'
