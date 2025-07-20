@@ -8,6 +8,8 @@ import sqlite3
 import hashlib
 import time
 import re
+import json
+from datetime import datetime
 from .config import DATABASE_NAME, DEFAULT_EXTRACTED_DATA
 import uuid
 
@@ -26,6 +28,18 @@ def init_db():
             phone TEXT,
             password_hash TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS memory_bot_data (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            memory_data TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id),
+            UNIQUE(user_id)
         )
     """)
 
@@ -126,6 +140,55 @@ def get_user_count():
     except Exception:
         return 0
 
+
+def save_memory_bot_data(user_id: int, memory_data: dict):
+    """Save Memory Bot data to database"""
+    try:
+        conn = sqlite3.connect(DATABASE_NAME)
+        cursor = conn.cursor()
+        
+        # Convert memory data to JSON string
+        memory_json = json.dumps(memory_data, ensure_ascii=False, default=str)
+        
+        # Use INSERT OR REPLACE for upsert behavior
+        cursor.execute("""
+            INSERT OR REPLACE INTO memory_bot_data (user_id, memory_data, updated_at)
+            VALUES (?, ?, CURRENT_TIMESTAMP)
+        """, (user_id, memory_json))
+        
+        conn.commit()
+        conn.close()
+        return True, "Memory Bot data saved successfully!"
+        
+    except Exception as e:
+        if 'conn' in locals():
+            conn.close()
+        return False, f"Failed to save Memory Bot data: {str(e)}"
+
+def load_memory_bot_data(user_id: int) -> dict:
+    """Load Memory Bot data from database"""
+    try:
+        conn = sqlite3.connect(DATABASE_NAME)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT memory_data FROM memory_bot_data WHERE user_id = ?
+        """, (user_id,))
+        
+        result = cursor.fetchone()
+        conn.close()
+        
+        if result:
+            # Parse JSON data
+            memory_data = json.loads(result[0])
+            return memory_data
+        else:
+            # Return default data if no saved data found
+            return DEFAULT_EXTRACTED_DATA.copy()
+            
+    except Exception as e:
+        print(f"Error loading Memory Bot data: {e}")
+        return DEFAULT_EXTRACTED_DATA.copy()
 
 def init_auth_session_state():
     """Initialize authentication-related session state"""
@@ -467,7 +530,7 @@ def show_navigation():
                 key="nav_langkah",
             ):
                 st.session_state.page = "langkah-ekspor"
-                st.info("📋 Langkah Ekspor Saya - Coming Soon!")
+                st.rerun()
 
             if st.button(
                 "👤  Profil Bisnis",
@@ -478,7 +541,7 @@ def show_navigation():
                 key="nav_profil",
             ):
                 st.session_state.page = "profil-bisnis"
-                st.info("👤 Profil Bisnis - Coming Soon!")
+                st.rerun()
 
             if st.button(
                 "📄  Persiapan Dokumen",
@@ -487,7 +550,7 @@ def show_navigation():
                 key="nav_dokumen",
             ):
                 st.session_state.page = "dokumen"
-                st.info("📄 Persiapan Dokumen - Coming Soon!")
+                st.rerun()
 
             if st.button(
                 "⭐  Kualitas Produk Saya",
@@ -496,27 +559,18 @@ def show_navigation():
                 key="nav_kualitas",
             ):
                 st.session_state.page = "kualitas"
-                st.info("⭐ Kualitas Produk Saya - Coming Soon!")
+                st.rerun()
 
-            st.markdown(
-                """
-            <div style="
-                background: linear-gradient(135deg, rgba(25, 135, 84, 0.1), rgba(25, 135, 84, 0.05));
-                padding: 0.8rem;
-                border-radius: 10px;
-                margin: 0.5rem 0;
-                border-left: 4px solid #198754;
-            ">
-                <div style="color: #198754; font-weight: 600; font-size: 0.9rem;">
-                    🌍 Export Readiness Check
-                </div>
-                <div style="color: #6c757d; font-size: 0.8rem; margin-top: 0.3rem;">
-                    💬 Integrated dalam Chat - Ketik "cek kesiapan ekspor"
-                </div>
-            </div>
-            """,
-                unsafe_allow_html=True,
-            )
+            if st.button(
+                "🌍  Export Readiness Check",
+                type="secondary",
+                use_container_width=True,
+                key="nav_export_check",
+            ):
+                # Set flags and redirect to chat with export readiness trigger
+                st.session_state.page = "chat"
+                st.session_state.trigger_export_readiness = True
+                st.rerun()
 
             if st.button(
                 "🌐  Cek Pasar Global",
@@ -527,7 +581,7 @@ def show_navigation():
                 key="nav_pasar",
             ):
                 st.session_state.page = "pasar-global"
-                st.info("🌐 Cek Pasar Global - Coming Soon!")
+                st.rerun()
 
             if st.button(
                 "💬  Diskusi dengan Exporo",
@@ -552,6 +606,246 @@ def show_navigation():
                 reset_user_data()
                 st.success("Logged out successfully!")
                 st.rerun()
+
+
+def show_coming_soon_page(feature_key):
+    """Display styled coming soon page with feature-specific colors"""
+    
+    FEATURE_COLORS = {
+        "langkah-ekspor": {
+            "primary": "#3498db", 
+            "secondary": "#2980b9",
+            "icon": "📋", 
+            "title": "Langkah Ekspor Saya",
+            "description": "Panduan langkah demi langkah untuk mempersiapkan ekspor produk Anda ke pasar internasional."
+        },
+        "dokumen": {
+            "primary": "#f39c12", 
+            "secondary": "#e67e22", 
+            "icon": "📄", 
+            "title": "Persiapan Dokumen",
+            "description": "Bantuan lengkap untuk menyiapkan semua dokumen yang diperlukan untuk ekspor."
+        },
+        "kualitas": {
+            "primary": "#9b59b6", 
+            "secondary": "#8e44ad",
+            "icon": "⭐", 
+            "title": "Kualitas Produk Saya",
+            "description": "Analisis dan sertifikasi kualitas produk untuk memenuhi standar internasional."
+        },
+        "pasar-global": {
+            "primary": "#1abc9c", 
+            "secondary": "#16a085",
+            "icon": "🌐", 
+            "title": "Cek Pasar Global",
+            "description": "Riset mendalam tentang peluang pasar dan kompetitor di berbagai negara tujuan ekspor."
+        }
+    }
+    
+    if feature_key not in FEATURE_COLORS:
+        feature_key = "langkah-ekspor"  # Default fallback
+    
+    colors = FEATURE_COLORS[feature_key]
+    
+    # Styled coming soon page with gradient background
+    st.markdown(
+        f"""
+    <div style="
+        background: linear-gradient(135deg, {colors['primary']}, {colors['secondary']});
+        color: white;
+        padding: 4rem 2rem;
+        border-radius: 25px;
+        text-align: center;
+        margin: 2rem 0;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        border: 1px solid rgba(255,255,255,0.3);
+    ">
+        <div style="font-size: 5rem; margin-bottom: 1.5rem; text-shadow: 0 4px 8px rgba(0,0,0,0.3);">{colors['icon']}</div>
+        <h1 style="margin: 0 0 1rem 0; font-size: 2.5rem; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">{colors['title']}</h1>
+        <h2 style="margin: 0 0 1.5rem 0; font-size: 1.8rem; font-weight: 300; color: rgba(255,255,255,0.9);">Coming Soon! 🚀</h2>
+        <p style="font-size: 1.1rem; line-height: 1.6; margin: 0 0 2rem 0; color: rgba(255,255,255,0.95); max-width: 600px; margin-left: auto; margin-right: auto;">
+            {colors['description']}
+        </p>
+        <div style="
+            background: rgba(255,255,255,0.1);
+            padding: 1.5rem;
+            border-radius: 15px;
+            margin: 2rem auto;
+            max-width: 500px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        ">
+            <p style="margin: 0; font-size: 1rem; color: rgba(255,255,255,0.9);">
+                <strong>📅 Fitur ini sedang dalam pengembangan aktif</strong><br>
+                Akan segera tersedia untuk membantu perjalanan ekspor Anda!
+            </p>
+        </div>
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
+    
+    # Call to action section
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if st.button("💬 Kembali ke Chat dengan Exporo", type="primary", use_container_width=True):
+            st.session_state.page = "chat"
+            st.rerun()
+
+
+def show_business_profile_page():
+    """Display user's actual business profile from Memory Bot data"""
+    
+    # Get Memory Bot data
+    memory_data = st.session_state.get("memory_bot", DEFAULT_EXTRACTED_DATA)
+    
+    # Red theme header matching the button
+    st.markdown(
+        """
+    <div style="
+        background: linear-gradient(135deg, #e74c3c, #c0392b);
+        color: white;
+        padding: 3rem 2rem;
+        border-radius: 25px;
+        text-align: center;
+        margin: 2rem 0;
+        box-shadow: 0 10px 40px rgba(231, 76, 60, 0.3);
+        border: 1px solid rgba(255,255,255,0.3);
+    ">
+        <div style="font-size: 4rem; margin-bottom: 1rem; text-shadow: 0 4px 8px rgba(0,0,0,0.3);">👤</div>
+        <h1 style="margin: 0 0 0.5rem 0; font-size: 2.5rem; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">Profil Bisnis Anda</h1>
+        <p style="margin: 0; font-size: 1.2rem; color: rgba(255,255,255,0.9);">
+            Informasi lengkap bisnis yang telah dikumpulkan melalui Exporo
+        </p>
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
+    
+    # Company Information Section
+    st.markdown("### 🏢 Informasi Perusahaan")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        company_name = memory_data.get("company_name", "Belum diisi")
+        st.markdown(f"**Nama Perusahaan:** {company_name}")
+        
+        business_bg = memory_data.get("business_background", "Belum diisi")
+        st.markdown(f"**Latar Belakang Bisnis:** {business_bg}")
+    
+    with col2:
+        location = memory_data.get("production_location", {})
+        city = location.get("city", "Belum diisi")
+        province = location.get("province", "Belum diisi")
+        st.markdown(f"**Lokasi Produksi:** {city}, {province}")
+        
+        language = memory_data.get("conversation_language", "Indonesian")
+        st.markdown(f"**Bahasa Komunikasi:** {language}")
+    
+    st.markdown("---")
+    
+    # Product Details Section
+    st.markdown("### 📦 Detail Produk")
+    product_details = memory_data.get("product_details", {})
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        product_name = product_details.get("name", "Belum diisi")
+        st.markdown(f"**Nama Produk:** {product_name}")
+        
+        category = memory_data.get("product_category", "Belum diisi")
+        st.markdown(f"**Kategori Produk:** {category}")
+    
+    with col2:
+        description = product_details.get("description", "Belum diisi")
+        st.markdown(f"**Deskripsi:** {description}")
+        
+        features = product_details.get("unique_features", "Belum diisi")
+        st.markdown(f"**Keunggulan Unik:** {features}")
+    
+    st.markdown("---")
+    
+    # Production Information Section
+    st.markdown("### 🏭 Informasi Produksi")
+    capacity = memory_data.get("production_capacity", {})
+    
+    amount = capacity.get("amount", 0)
+    unit = capacity.get("unit", "unit")
+    timeframe = capacity.get("timeframe", "bulan")
+    
+    capacity_text = f"{amount} {unit} per {timeframe}" if amount > 0 else "Belum diisi"
+    st.markdown(f"**Kapasitas Produksi:** {capacity_text}")
+    
+    # Export Readiness Section (if available)
+    export_readiness = memory_data.get("export_readiness", {})
+    if export_readiness and any(v for v in export_readiness.values() if v not in ["Not specified", [], ""]):
+        st.markdown("---")
+        st.markdown("### 🌍 Kesiapan Ekspor")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            target_countries = export_readiness.get("target_countries", [])
+            if target_countries:
+                st.markdown(f"**Negara Target:** {', '.join(target_countries)}")
+            
+            experience = export_readiness.get("export_experience", "Belum diisi")
+            if experience != "Not specified":
+                st.markdown(f"**Pengalaman Ekspor:** {experience}")
+        
+        with col2:
+            goals = export_readiness.get("export_goals", "Belum diisi")
+            if goals != "Not specified":
+                st.markdown(f"**Tujuan Ekspor:** {goals}")
+            
+            budget = export_readiness.get("budget_for_export", "Belum diisi")
+            if budget != "Not specified":
+                st.markdown(f"**Budget Ekspor:** {budget}")
+    
+    # Assessment History Section (if available)
+    assessment_history = memory_data.get("assessment_history", [])
+    if assessment_history:
+        st.markdown("---")
+        st.markdown("### 📊 Riwayat Analisis Kesiapan Ekspor")
+        
+        for i, assessment in enumerate(assessment_history, 1):
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.markdown(f"**{i}. Negara:** {assessment.get('country', 'N/A')}")
+            with col2:
+                st.markdown(f"**Skor:** {assessment.get('score', 'N/A')}/100")
+            with col3:
+                st.markdown(f"**Status:** {assessment.get('status', 'N/A')}")
+            with col4:
+                timestamp = assessment.get('timestamp', '')
+                if timestamp:
+                    try:
+                        date_obj = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                        formatted_date = date_obj.strftime('%d/%m/%Y')
+                        st.markdown(f"**Tanggal:** {formatted_date}")
+                    except:
+                        st.markdown(f"**Tanggal:** {timestamp[:10]}")
+    
+    st.markdown("---")
+    
+    # Action buttons
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        col_a, col_b = st.columns(2)
+        with col_a:
+            if st.button("✏️ Edit Profil di Chat", type="primary", use_container_width=True):
+                st.session_state.page = "chat"
+                st.rerun()
+        
+        with col_b:
+            # Download profile as JSON
+            profile_json = json.dumps(memory_data, indent=2, ensure_ascii=False)
+            st.download_button(
+                label="📥 Download JSON",
+                data=profile_json,
+                file_name=f"profil_bisnis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                mime="application/json",
+                use_container_width=True
+            )
 
 
 def show_welcome_landing_page():

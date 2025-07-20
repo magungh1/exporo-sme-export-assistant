@@ -14,6 +14,7 @@ from google.genai import types
 from .config import (
     GEMINI_API_KEY,
     USER_PROFILING_PROMPT,
+    EXPORT_FOCUSED_PROMPT,
     DATA_EXTRACTION_PROMPT,
     EXPORT_DATA_EXTRACTION_PROMPT,
     EXPORT_READINESS_PROMPT,
@@ -33,10 +34,13 @@ def init_gemini():
 
 
 def get_bot_response(user_input, conversation_history, uploaded_images=None):
-    """Get bot response using Gemini API with user profiling prompt"""
+    """Get bot response using Gemini API with intelligent prompt selection"""
 
-    # Check if user is requesting export analysis
+    # Get memory data and check profile completeness
     memory_data = st.session_state.get("memory_bot", DEFAULT_EXTRACTED_DATA)
+    profile_status = check_profile_completeness(memory_data)
+    
+    # Check if user is requesting export analysis
     analysis_requested, target_country = detect_export_analysis_request(
         user_input, memory_data
     )
@@ -70,6 +74,32 @@ Namun, saya perlu tahu negara tujuan ekspor yang Anda inginkan. Berikut beberapa
 Negara mana yang ingin Anda analisis?
         """
 
+    # Select appropriate prompt based on profile completeness
+    if profile_status["is_complete"]:
+        # Use export-focused prompt with user data
+        company_name = memory_data.get("company_name", "Not specified")
+        product_name = memory_data.get("product_details", {}).get("name", "Not specified")
+        product_category = memory_data.get("product_category", "Not specified")
+        
+        # Format production capacity
+        capacity = memory_data.get("production_capacity", {})
+        capacity_str = f"{capacity.get('amount', 0)} {capacity.get('unit', '')} per {capacity.get('timeframe', '')}"
+        
+        # Format production location
+        location = memory_data.get("production_location", {})
+        location_str = f"{location.get('city', '')}, {location.get('province', '')}"
+        
+        system_prompt = EXPORT_FOCUSED_PROMPT.format(
+            company_name=company_name,
+            product_name=product_name,
+            product_category=product_category,
+            production_capacity=capacity_str,
+            production_location=location_str
+        )
+    else:
+        # Use profile building prompt
+        system_prompt = USER_PROFILING_PROMPT
+
     # Normal chat flow
     client = init_gemini()
 
@@ -79,18 +109,21 @@ Negara mana yang ingin Anda analisis?
     # Add system prompt as first user message
     contents.append(
         types.Content(
-            role="user", parts=[types.Part.from_text(text=USER_PROFILING_PROMPT)]
+            role="user", parts=[types.Part.from_text(text=system_prompt)]
         )
     )
 
-    # Add a model response acknowledging the system prompt
+    # Add a model response acknowledging the system prompt based on mode
+    if profile_status["is_complete"]:
+        acknowledgment_text = f"Saya Exporo, siap membantu sebagai Export Specialist untuk {memory_data.get('company_name', 'perusahaan Anda')}. Profil bisnis Anda sudah lengkap dan saya akan fokus pada strategi ekspor dan analisis kesiapan pasar internasional."
+    else:
+        acknowledgment_text = "Saya Exporo, siap membantu sebagai Business Profile Assistant untuk UKM Indonesia. Saya akan mengumpulkan informasi bisnis secara bertahap dan ramah serta membantu analisis kesiapan ekspor."
+    
     contents.append(
         types.Content(
             role="model",
             parts=[
-                types.Part.from_text(
-                    text="Saya Exporo, siap membantu sebagai Business Profile Assistant untuk UKM Indonesia. Saya akan mengumpulkan informasi bisnis secara bertahap dan ramah serta membantu analisis kesiapan ekspor."
-                )
+                types.Part.from_text(text=acknowledgment_text)
             ],
         )
     )
@@ -220,7 +253,13 @@ def init_chat_session_state():
     if "extracted_data" not in st.session_state:
         st.session_state.extracted_data = DEFAULT_EXTRACTED_DATA.copy()
     if "memory_bot" not in st.session_state:
-        st.session_state.memory_bot = DEFAULT_EXTRACTED_DATA.copy()
+        # Load saved Memory Bot data if user is logged in
+        if st.session_state.get('logged_in', False) and st.session_state.get('user'):
+            from .auth import load_memory_bot_data
+            user_id = st.session_state.user['id']
+            st.session_state.memory_bot = load_memory_bot_data(user_id)
+        else:
+            st.session_state.memory_bot = DEFAULT_EXTRACTED_DATA.copy()
 
 
 def extract_export_data_from_conversation(conversation_history):
@@ -368,6 +407,14 @@ def update_memory_bot(newly_extracted_data):
 
     # Update timestamp
     st.session_state.extracted_data["extraction_timestamp"] = datetime.now().isoformat()
+    
+    # Auto-save Memory Bot data to database if user is logged in
+    if st.session_state.get('logged_in', False) and st.session_state.get('user'):
+        from .auth import save_memory_bot_data
+        user_id = st.session_state.user['id']
+        success, message = save_memory_bot_data(user_id, st.session_state.memory_bot)
+        if not success:
+            print(f"Failed to auto-save Memory Bot data: {message}")
 
 
 def show_welcome_message():
@@ -452,7 +499,6 @@ def show_chat_interface():
                         f"""
                     <div class="user-message">
                         {message["content"]}
-                        <div class="message-time">{msg_time}</div>
                     </div>
                     """,
                         unsafe_allow_html=True,
@@ -468,15 +514,29 @@ def show_chat_interface():
                             )
 
                 else:  # assistant message
-                    st.markdown(
-                        f"""
-                    <div class="assistant-message">
-                        {message["content"]}
-                        <div class="message-time">{msg_time}</div>
-                    </div>
-                    """,
-                        unsafe_allow_html=True,
+                    # Check if this is an export readiness analysis response
+                    is_export_analysis = (
+                        "ANALISIS KESIAPAN EKSPOR" in message["content"] or
+                        "🎯 **ANALISIS KESIAPAN EKSPOR" in message["content"]
                     )
+                    
+                    if is_export_analysis:
+                        # Display export analysis without timestamp
+                        st.markdown(
+                            f"""
+                        <div class="assistant-message">
+                            {message["content"]}
+                        </div>
+                        """,
+                            unsafe_allow_html=True,
+                        )
+                    else:
+                        # Display regular messages with timestamp
+                        st.markdown(
+                            f"""
+                        <div class="assistant-message">{message["content"]}</div>""",
+                            unsafe_allow_html=True,
+                        )
 
         # Chat input with file upload support
         prompt = st.chat_input(
@@ -523,31 +583,36 @@ def show_chat_interface():
             # Clear the flag
             st.session_state.generate_response = False
 
-            # Get the last user message
-            last_user_message = st.session_state.messages[-1]
+            # Safety check: ensure there are messages before accessing
+            if st.session_state.messages:
+                # Get the last user message
+                last_user_message = st.session_state.messages[-1]
 
-            # Show typing indicator while getting bot response
-            with st.spinner("💭 Sedang mengetik..."):
-                # Get bot response
-                bot_response = get_bot_response(
-                    last_user_message["content"]
-                    if last_user_message["content"]
-                    else "Saya mengirim gambar untuk Anda lihat",
-                    st.session_state.messages[:-1],
-                    None,  # Files are already processed and stored in the message
-                )
+                # Show typing indicator while getting bot response
+                with st.spinner("💭 Sedang mengetik..."):
+                    # Get bot response
+                    bot_response = get_bot_response(
+                        last_user_message["content"]
+                        if last_user_message["content"]
+                        else "Saya mengirim gambar untuk Anda lihat",
+                        st.session_state.messages[:-1],
+                        None,  # Files are already processed and stored in the message
+                    )
 
-                # Add bot response
-                st.session_state.messages.append(
-                    {
-                        "role": "assistant",
-                        "content": bot_response,
-                        "timestamp": datetime.now().isoformat(),
-                    }
-                )
+                    # Add bot response
+                    st.session_state.messages.append(
+                        {
+                            "role": "assistant",
+                            "content": bot_response,
+                            "timestamp": datetime.now().isoformat(),
+                        }
+                    )
 
-            # Rerun to show bot response
-            st.rerun()
+                # Rerun to show bot response
+                st.rerun()
+            else:
+                # If no messages, clear the flag and don't generate response
+                st.session_state.generate_response = False
 
     with col2:
         show_memory_bot()
@@ -625,6 +690,32 @@ def show_memory_bot():
             st.code(
                 json.dumps(assessment_history, indent=2, ensure_ascii=False),
                 language="json",
+            )
+        
+        # Add manual save button and download option
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("💾 Save to Database", help="Save Memory Bot data to database"):
+                if st.session_state.get('logged_in', False) and st.session_state.get('user'):
+                    from .auth import save_memory_bot_data
+                    user_id = st.session_state.user['id']
+                    success, message = save_memory_bot_data(user_id, st.session_state.memory_bot)
+                    if success:
+                        st.success("✅ Memory Bot data saved!")
+                    else:
+                        st.error(f"❌ {message}")
+                else:
+                    st.warning("⚠️ Please log in to save data")
+        
+        with col2:
+            # Download Memory Bot data as JSON
+            memory_json = json.dumps(memory_data, indent=2, ensure_ascii=False)
+            st.download_button(
+                label="📥 Download JSON",
+                data=memory_json,
+                file_name=f"memory_bot_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                mime="application/json",
+                help="Download Memory Bot data as JSON file"
             )
 
     else:
@@ -770,6 +861,12 @@ def perform_chat_based_export_analysis(target_country: str, memory_data: dict) -
             ]
 
             st.session_state.memory_bot["assessment_history"].append(assessment_record)
+            
+            # Auto-save updated Memory Bot data with assessment
+            if st.session_state.get('logged_in', False) and st.session_state.get('user'):
+                from .auth import save_memory_bot_data
+                user_id = st.session_state.user['id']
+                save_memory_bot_data(user_id, st.session_state.memory_bot)
 
             return readable_response
 
@@ -791,6 +888,41 @@ def perform_chat_based_export_analysis(target_country: str, memory_data: dict) -
 
 💡 **Saran:** Coba lagi dalam beberapa saat atau pastikan koneksi internet Anda stabil.
         """
+
+
+def check_profile_completeness(memory_data: dict) -> dict:
+    """Check if user profile is 100% complete for mode switching"""
+    required_fields = [
+        memory_data.get("company_name", "Not specified") != "Not specified",
+        memory_data.get("product_details", {}).get("name", "Not specified") != "Not specified",
+        memory_data.get("product_category", "Not specified") != "Not specified",
+        memory_data.get("production_capacity", {}).get("amount", 0) > 0,
+        memory_data.get("production_location", {}).get("city", "Not specified") != "Not specified"
+    ]
+    
+    completed = sum(required_fields)
+    total = len(required_fields)
+    
+    missing_fields = []
+    if not required_fields[0]:
+        missing_fields.append("company_name")
+    if not required_fields[1]:
+        missing_fields.append("product_name")
+    if not required_fields[2]:
+        missing_fields.append("product_category")
+    if not required_fields[3]:
+        missing_fields.append("production_capacity")
+    if not required_fields[4]:
+        missing_fields.append("production_location")
+    
+    return {
+        "percentage": (completed / total) * 100,
+        "is_complete": completed == total,
+        "missing_count": total - completed,
+        "missing_fields": missing_fields,
+        "completed_fields": completed,
+        "total_fields": total
+    }
 
 
 def detect_export_analysis_request(
@@ -853,6 +985,45 @@ def detect_export_analysis_request(
 
 def show_full_chat_page():
     """Display the complete standalone chat page"""
+    # Initialize messages if not exists
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+    
+    # Track current page and reset chat if coming from a different page
+    current_page = "chat"
+    last_page = st.session_state.get("last_page", "")
+    
+    # Auto-reset chat if coming from a different page (not chat)
+    if last_page != "" and last_page != "chat":
+        st.session_state.messages = []
+        st.session_state.user_id = str(uuid.uuid4())
+    
+    # Update last page tracker
+    st.session_state.last_page = current_page
+    
+    # Check for export readiness trigger from sidebar
+    has_export_trigger = st.session_state.get("trigger_export_readiness", False)
+    
+    # Handle export readiness trigger from sidebar
+    if has_export_trigger:
+        # Clear the trigger flag
+        st.session_state.trigger_export_readiness = False
+        
+        # Clear any existing messages for fresh start with export readiness
+        st.session_state.messages = []
+        
+        # Auto-add export readiness request message
+        auto_message = {
+            "role": "user",
+            "content": "Cek kesiapan ekspor",
+            "images": [],
+            "timestamp": datetime.now().isoformat(),
+        }
+        st.session_state.messages.append(auto_message)
+        
+        # Set flag to generate bot response
+        st.session_state.generate_response = True
+    
     # Chat page header
     st.markdown(
         """

@@ -1,7 +1,7 @@
 # Exporo SME Export Assistant - Makefile
 # Simplifies common development and deployment tasks
 
-.PHONY: help run install clean test lint format fix check deps reset-db
+.PHONY: help run install clean clean-cache test lint format fix check deps reset-db
 
 # Default target
 help:
@@ -16,7 +16,8 @@ help:
 	@echo "  make dev         - Run in development mode with file watching"
 	@echo ""
 	@echo "🧹 Development Tools:"
-	@echo "  make clean       - Clean up cache and temporary files"
+	@echo "  make clean       - Clean up all cache and temporary files"
+	@echo "  make clean-cache - Clean only Streamlit cache (lighter)"
 	@echo "  make reset-db    - Reset the SQLite database"
 	@echo "  make format      - Format code with ruff"
 	@echo "  make lint        - Run linting checks with ruff"
@@ -66,7 +67,19 @@ clean:
 	find . -type f -name "*.pyo" -delete 2>/dev/null || true
 	find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
 	rm -rf .streamlit/ 2>/dev/null || true
-	@echo "✅ Cleanup completed!"
+	rm -rf ~/.streamlit/ 2>/dev/null || true
+	find . -type d -name ".ruff_cache" -exec rm -rf {} + 2>/dev/null || true
+	find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+	find . -type d -name ".mypy_cache" -exec rm -rf {} + 2>/dev/null || true
+	find . -type f -name ".DS_Store" -delete 2>/dev/null || true
+	@echo "✅ All caches and temporary files cleaned!"
+
+# Clean only Streamlit cache (lighter version)
+clean-cache:
+	@echo "🗄️ Cleaning Streamlit cache..."
+	rm -rf .streamlit/ 2>/dev/null || true
+	rm -rf ~/.streamlit/ 2>/dev/null || true
+	@echo "✅ Streamlit cache cleared!"
 
 # Reset database
 reset-db:

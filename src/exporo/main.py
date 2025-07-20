@@ -46,20 +46,49 @@ def main():
     if not st.session_state.logged_in:
         # Show authentication pages
         if st.session_state.page == "login":
+            st.session_state.last_page = "login"
             show_login_page()
         elif st.session_state.page == "signup":
+            st.session_state.last_page = "signup"
             show_signup_page()
     else:
         # Show pages for logged-in users
         if st.session_state.page == "welcome":
+            st.session_state.last_page = "welcome"
             show_welcome_landing_page()
         elif st.session_state.page == "chat":
             from .chat import show_full_chat_page
 
             show_full_chat_page()
+        elif st.session_state.page == "profil-bisnis":
+            st.session_state.last_page = "profil-bisnis"
+            from .auth import show_business_profile_page
+            
+            show_business_profile_page()
+        elif st.session_state.page == "langkah-ekspor":
+            st.session_state.last_page = "langkah-ekspor"
+            from .auth import show_coming_soon_page
+            
+            show_coming_soon_page("langkah-ekspor")
+        elif st.session_state.page == "dokumen":
+            st.session_state.last_page = "dokumen"
+            from .auth import show_coming_soon_page
+            
+            show_coming_soon_page("dokumen")
+        elif st.session_state.page == "kualitas":
+            st.session_state.last_page = "kualitas"
+            from .auth import show_coming_soon_page
+            
+            show_coming_soon_page("kualitas")
+        elif st.session_state.page == "pasar-global":
+            st.session_state.last_page = "pasar-global"
+            from .auth import show_coming_soon_page
+            
+            show_coming_soon_page("pasar-global")
         else:
             # Default to welcome page for logged-in users
             st.session_state.page = "welcome"
+            st.session_state.last_page = "welcome"
             show_welcome_landing_page()
 
     # Footer
