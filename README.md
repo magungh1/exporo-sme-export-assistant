@@ -26,6 +26,7 @@ src/exporo/
 ### Prerequisites
 - Python 3.13+
 - UV package manager
+- Make (optional, for simplified commands)
 
 ### Installation
 
@@ -35,21 +36,34 @@ src/exporo/
    cd exporo-sme-export-assistant
    ```
 
-2. **Install dependencies:**
+2. **Quick setup with Makefile:**
    ```bash
-   uv sync
-   ```
-
-3. **Set up environment variables:**
-   ```bash
-   cp .env.example .env
+   make install           # Install dependencies
+   cp .env.example .env   # Copy environment template
    # Edit .env and add your GEMINI_API_KEY
+   make run              # Start the application
    ```
 
-4. **Run the application:**
+3. **Or manual setup:**
    ```bash
-   uv run streamlit run app.py
+   uv sync                                    # Install dependencies
+   cp .env.example .env                       # Copy environment template
+   # Edit .env and add your GEMINI_API_KEY
+   uv run streamlit run app.py               # Run the application
    ```
+
+### 🛠️ Available Make Commands
+
+```bash
+make help        # Show all available commands
+make run         # Start the application
+make dev         # Run in development mode with file watching
+make install     # Install dependencies
+make validate    # Check environment setup
+make test        # Run basic functionality tests
+make clean       # Clean up cache files
+make reset-db    # Reset the database
+```
 
 ### Environment Variables
 
@@ -87,6 +101,21 @@ uv run streamlit run app.py
 
 # Test imports
 uv run python -c "from src.exporo import config, auth, chat; print('✅ All good!')"
+```
+
+### Running with Make
+```bash
+# Install and validate setup
+make install validate
+
+# Run the application
+make run
+
+# Development mode with file watching
+make dev
+
+# Run tests and cleanup
+make test clean
 ```
 
 ## 📁 File Structure
