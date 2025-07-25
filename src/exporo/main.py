@@ -63,28 +63,33 @@ def main():
         elif st.session_state.page == "profil-bisnis":
             st.session_state.last_page = "profil-bisnis"
             from .auth import show_business_profile_page
-            
+
             show_business_profile_page()
         elif st.session_state.page == "langkah-ekspor":
             st.session_state.last_page = "langkah-ekspor"
             from .auth import show_coming_soon_page
-            
+
             show_coming_soon_page("langkah-ekspor")
         elif st.session_state.page == "dokumen":
             st.session_state.last_page = "dokumen"
             from .auth import show_coming_soon_page
-            
+
             show_coming_soon_page("dokumen")
         elif st.session_state.page == "kualitas":
             st.session_state.last_page = "kualitas"
             from .auth import show_coming_soon_page
-            
+
             show_coming_soon_page("kualitas")
         elif st.session_state.page == "pasar-global":
             st.session_state.last_page = "pasar-global"
             from .auth import show_coming_soon_page
-            
+
             show_coming_soon_page("pasar-global")
+        elif st.session_state.page == "dashboard":
+            st.session_state.last_page = "dashboard"
+            from .dashboard import show_dashboard_page
+
+            show_dashboard_page()
         else:
             # Default to welcome page for logged-in users
             st.session_state.page = "welcome"
@@ -96,10 +101,10 @@ def main():
     if st.session_state.logged_in:
         user_count = get_user_count()
         st.markdown(
-            f"© 2024 Exporo - Platform UMKM untuk Ekspor Global | Total Users: {user_count}"
+            f"© 2025 Exporo - Platform UMKM untuk Ekspor Global | Total Users: {user_count}"
         )
     else:
-        st.markdown("© 2024 Exporo - Platform UMKM untuk Ekspor Global")
+        st.markdown("© 2025 Exporo - Platform UMKM untuk Ekspor Global")
 
 
 if __name__ == "__main__":

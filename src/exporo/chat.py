@@ -39,7 +39,7 @@ def get_bot_response(user_input, conversation_history, uploaded_images=None):
     # Get memory data and check profile completeness
     memory_data = st.session_state.get("memory_bot", DEFAULT_EXTRACTED_DATA)
     profile_status = check_profile_completeness(memory_data)
-    
+
     # Check if user is requesting export analysis
     analysis_requested, target_country = detect_export_analysis_request(
         user_input, memory_data
@@ -58,7 +58,7 @@ Namun, saya perlu tahu negara tujuan ekspor yang Anda inginkan. Berikut beberapa
 
 🌏 **Negara yang Tersedia:**
 • 🇲🇾 **Malaysia** - Tingkat kesulitan: Rendah
-• 🇸🇬 **Singapura** - Tingkat kesulitan: Sedang  
+• 🇸🇬 **Singapura** - Tingkat kesulitan: Sedang
 • 🇦🇺 **Australia** - Tingkat kesulitan: Sedang
 • 🇰🇷 **Korea Selatan** - Tingkat kesulitan: Sedang
 • 🇺🇸 **Amerika Serikat** - Tingkat kesulitan: Tinggi
@@ -80,15 +80,15 @@ Negara mana yang ingin Anda analisis?
         company_name = memory_data.get("company_name", "Not specified")
         product_name = memory_data.get("product_details", {}).get("name", "Not specified")
         product_category = memory_data.get("product_category", "Not specified")
-        
+
         # Format production capacity
         capacity = memory_data.get("production_capacity", {})
         capacity_str = f"{capacity.get('amount', 0)} {capacity.get('unit', '')} per {capacity.get('timeframe', '')}"
-        
+
         # Format production location
         location = memory_data.get("production_location", {})
         location_str = f"{location.get('city', '')}, {location.get('province', '')}"
-        
+
         system_prompt = EXPORT_FOCUSED_PROMPT.format(
             company_name=company_name,
             product_name=product_name,
@@ -118,7 +118,7 @@ Negara mana yang ingin Anda analisis?
         acknowledgment_text = f"Saya Exporo, siap membantu sebagai Export Specialist untuk {memory_data.get('company_name', 'perusahaan Anda')}. Profil bisnis Anda sudah lengkap dan saya akan fokus pada strategi ekspor dan analisis kesiapan pasar internasional."
     else:
         acknowledgment_text = "Saya Exporo, siap membantu sebagai Business Profile Assistant untuk UKM Indonesia. Saya akan mengumpulkan informasi bisnis secara bertahap dan ramah serta membantu analisis kesiapan ekspor."
-    
+
     contents.append(
         types.Content(
             role="model",
@@ -161,7 +161,7 @@ Negara mana yang ingin Anda analisis?
 
     try:
         generate_config = types.GenerateContentConfig(
-            response_mime_type="text/plain", max_output_tokens=500, temperature=0.7
+            response_mime_type="text/plain", max_output_tokens=4000, temperature=0.7
         )
 
         response = client.models.generate_content(
@@ -173,13 +173,13 @@ Negara mana yang ingin Anda analisis?
 
 
 def extract_data_from_conversation(conversation_history):
-    """Extract structured data using Gemini API with data extraction prompt from 2 latest messages"""
+    """Extract structured data using Gemini API with data extraction prompt from latest and previous chat"""
     client = init_gemini()
 
-    # Use only the 2 latest messages
+    # Use the latest 4 messages to capture both latest and previous chat context
     latest_messages = (
-        conversation_history[-2:]
-        if len(conversation_history) >= 2
+        conversation_history[-4:]
+        if len(conversation_history) >= 4
         else conversation_history
     )
 
@@ -188,21 +188,10 @@ def extract_data_from_conversation(conversation_history):
         [f"{msg['role']}: {msg.get('content', '')}" for msg in latest_messages]
     )
 
-    # Debug: print conversation text
-    print(f"Conversation text for extraction: {conversation_text}")
-
     # Prepare contents for Gemini
     contents = [
         types.Content(
             role="user", parts=[types.Part.from_text(text=DATA_EXTRACTION_PROMPT)]
-        ),
-        types.Content(
-            role="model",
-            parts=[
-                types.Part.from_text(
-                    text="I understand. I will extract structured business profile data from the conversation and return it as clean JSON."
-                )
-            ],
         ),
         types.Content(
             role="user",
@@ -217,8 +206,10 @@ def extract_data_from_conversation(conversation_history):
     try:
         generate_config = types.GenerateContentConfig(
             response_mime_type="application/json",
-            max_output_tokens=1000,
-            temperature=0.1,
+            thinking_config = types.ThinkingConfig(
+            thinking_budget=-1),
+            max_output_tokens=4000,
+            temperature=0.1
         )
 
         response = client.models.generate_content(
@@ -263,13 +254,13 @@ def init_chat_session_state():
 
 
 def extract_export_data_from_conversation(conversation_history):
-    """Extract export readiness data using Gemini API with export-specific extraction prompt"""
+    """Extract export readiness data using Gemini API with export-specific extraction prompt from latest and previous chat"""
     client = init_gemini()
 
-    # Use the latest 4 messages to capture more export-related context
+    # Use the latest 6 messages to capture both latest and previous chat context for export data
     latest_messages = (
-        conversation_history[-4:]
-        if len(conversation_history) >= 4
+        conversation_history[-6:]
+        if len(conversation_history) >= 6
         else conversation_history
     )
 
@@ -325,8 +316,10 @@ def extract_export_data_from_conversation(conversation_history):
     try:
         generate_config = types.GenerateContentConfig(
             response_mime_type="application/json",
-            max_output_tokens=1000,
+            max_output_tokens=4000,
             temperature=0.1,
+            thinking_config = types.ThinkingConfig(
+            thinking_budget=-1)
         )
 
         response = client.models.generate_content(
@@ -346,75 +339,120 @@ def extract_export_data_from_conversation(conversation_history):
 
 
 def update_memory_bot(newly_extracted_data):
-    """Update memory_bot with only non-null values from extracted_data"""
+    """Update memory_bot with meaningful values from extracted_data - persistent dictionary with existing data protection"""
     if newly_extracted_data and isinstance(newly_extracted_data, dict):
-        # Debug: print extracted data
-        print(f"Newly extracted data: {newly_extracted_data}")
+        # Ensure memory_bot exists and is a copy of DEFAULT_EXTRACTED_DATA structure
+        if "memory_bot" not in st.session_state:
+            st.session_state.memory_bot = DEFAULT_EXTRACTED_DATA.copy()
 
-        # Update extracted_data (temporary)
+        # Update extracted_data (temporary) - less restrictive filtering
         for key, value in newly_extracted_data.items():
-            if (
-                key != "extraction_timestamp"
-                and value != "Not specified"
-                and value != "extraction_error"
-                and value != ""
-                and value != 0
-            ):
+            if key != "extraction_timestamp" and is_meaningful_value(value):
                 if isinstance(value, dict):
-                    # Update nested dictionary - only if new value is meaningful
+                    # Ensure nested dict exists in extracted_data
+                    if key not in st.session_state.extracted_data:
+                        st.session_state.extracted_data[key] = {}
+                    # Update nested dictionary - only meaningful values
                     for nested_key, nested_value in value.items():
-                        if (
-                            nested_value != "Not specified"
-                            and nested_value != "extraction_error"
-                            and nested_value != ""
-                            and nested_value != 0
-                            and nested_value is not None
-                        ):
-                            st.session_state.extracted_data[key][nested_key] = (
-                                nested_value
-                            )
+                        if is_meaningful_value(nested_value):
+                            st.session_state.extracted_data[key][nested_key] = nested_value
                 else:
-                    # Update simple value - only if new value is meaningful
-                    if value is not None:
-                        st.session_state.extracted_data[key] = value
+                    st.session_state.extracted_data[key] = value
 
-        # Update memory_bot - only non-null values from extracted_data
+        # Update memory_bot with persistent merging and existing data protection
         for key, value in newly_extracted_data.items():
-            if (
-                key != "extraction_timestamp"
-                and value
-                and value != "Not specified"
-                and value != "extraction_error"
-                and value != ""
-                and value != 0
-            ):
+            if key != "extraction_timestamp" and is_meaningful_value(value):
                 if isinstance(value, dict):
-                    # Update nested dictionary in memory_bot - only if new value is meaningful
+                    # Ensure nested dict exists in memory_bot
+                    if key not in st.session_state.memory_bot:
+                        st.session_state.memory_bot[key] = {}
+                    elif not isinstance(st.session_state.memory_bot[key], dict):
+                        st.session_state.memory_bot[key] = {}
+
+                    # Merge nested dictionary values persistently with existing data protection
                     for nested_key, nested_value in value.items():
-                        if (
-                            nested_value
-                            and nested_value != "Not specified"
-                            and nested_value != "extraction_error"
-                            and nested_value != ""
-                            and nested_value != 0
-                            and nested_value is not None
-                        ):
-                            st.session_state.memory_bot[key][nested_key] = nested_value
+                        if is_meaningful_value(nested_value):
+                            # Check if existing data exists and is meaningful
+                            existing_value = st.session_state.memory_bot[key].get(nested_key)
+
+                            # Only update if:
+                            # 1. No existing data exists, OR
+                            # 2. Existing data is not meaningful, OR
+                            # 3. New value is more specific/detailed than existing
+                            if (not existing_value or
+                                not is_meaningful_value(existing_value) or
+                                is_more_detailed_value(nested_value, existing_value)):
+                                st.session_state.memory_bot[key][nested_key] = nested_value
                 else:
-                    # Update simple value in memory_bot - only if new value is meaningful
-                    if value is not None:
+                    # Check existing simple value before updating
+                    existing_value = st.session_state.memory_bot.get(key)
+
+                    # Only update if:
+                    # 1. No existing data exists, OR
+                    # 2. Existing data is not meaningful, OR
+                    # 3. New value is more specific/detailed than existing
+                    if (not existing_value or
+                        not is_meaningful_value(existing_value) or
+                        is_more_detailed_value(value, existing_value)):
                         st.session_state.memory_bot[key] = value
 
-    # Update timestamp
-    st.session_state.extracted_data["extraction_timestamp"] = datetime.now().isoformat()
-    
-    # Auto-save Memory Bot data to database if user is logged in
-    if st.session_state.get('logged_in', False) and st.session_state.get('user'):
-        from .auth import save_memory_bot_data
-        user_id = st.session_state.user['id']
-        success, message = save_memory_bot_data(user_id, st.session_state.memory_bot)
-        if not success:
-            print(f"Failed to auto-save Memory Bot data: {message}")
+        # Update timestamp
+        st.session_state.extracted_data["extraction_timestamp"] = datetime.now().isoformat()
+
+        # Auto-save Memory Bot data to database if user is logged in
+        if st.session_state.get('logged_in', False) and st.session_state.get('user'):
+            from .auth import save_memory_bot_data
+            user_id = st.session_state.user['id']
+            success, message = save_memory_bot_data(user_id, st.session_state.memory_bot)
+            if not success:
+                print(f"Failed to auto-save Memory Bot data: {message}")
+
+def is_meaningful_value(value):
+    """Check if a value is meaningful and should be stored"""
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return value not in ["", "Not specified", "extraction_error", "Belum diisi", "unclear"]
+    if isinstance(value, (list, dict)):
+        return len(value) > 0
+    if isinstance(value, (int, float)):
+        return True  # Allow 0 as a valid value
+    return bool(value)
+
+
+def is_more_detailed_value(new_value, existing_value):
+    """Check if new value is more detailed/specific than existing value"""
+    # If types are different, prefer non-default values
+    if type(new_value) != type(existing_value):
+        return is_meaningful_value(new_value) and not is_meaningful_value(existing_value)
+
+    # For strings, check if new value is more specific
+    if isinstance(new_value, str) and isinstance(existing_value, str):
+        # Longer, more detailed strings are generally better
+        if len(new_value.strip()) > len(existing_value.strip()):
+            return True
+        # If lengths are similar, prefer non-generic values
+        generic_terms = ["Not specified", "Belum diisi", "unclear", "extraction_error"]
+        new_is_generic = any(term.lower() in new_value.lower() for term in generic_terms)
+        existing_is_generic = any(term.lower() in existing_value.lower() for term in generic_terms)
+        return not new_is_generic and existing_is_generic
+
+    # For numbers, prefer larger meaningful values (like production capacity)
+    if isinstance(new_value, (int, float)) and isinstance(existing_value, (int, float)):
+        return new_value > existing_value and new_value > 0
+
+    # For lists, prefer longer lists with more items
+    if isinstance(new_value, list) and isinstance(existing_value, list):
+        return len(new_value) > len(existing_value)
+
+    # For dicts, prefer dicts with more meaningful keys
+    if isinstance(new_value, dict) and isinstance(existing_value, dict):
+        new_meaningful_keys = sum(1 for k, v in new_value.items() if is_meaningful_value(v))
+        existing_meaningful_keys = sum(1 for k, v in existing_value.items() if is_meaningful_value(v))
+        return new_meaningful_keys > existing_meaningful_keys
+
+    # Default: don't replace existing value
+    return False
 
 
 def show_welcome_message():
@@ -442,9 +480,9 @@ def show_welcome_message():
 
             # Main welcome content
             st.markdown(f"""
-            Halo **{user_name}**! Saya **Exporo**, yang akan membimbing setiap langkah ekspor produk Anda ke luar negeri mulai 
+            Halo **{user_name}**! Saya **Exporo**, yang akan membimbing setiap langkah ekspor produk Anda ke luar negeri mulai
             dari cek kesiapan, urus dokumen, sampai strategi penjualan global.
-            
+
             Sebelum memulai, saya perlu mengenal sedikit tentang Anda. Mulai percakapan di bawah untuk memulai profiling bisnis Anda!
             """)
 
@@ -472,19 +510,25 @@ def show_chat_interface():
             unsafe_allow_html=True,
         )
 
-        # Display chat history in a styled container with fixed height and auto-scroll
-        chat_container = st.container(height=500, border=True)
-        with chat_container:
-            if not st.session_state.messages:
-                st.markdown(
-                    """
-                <div style="text-align: center; color: #667781; margin-top: 50px; font-style: italic;">
-                    👋 Selamat datang! Mulai percakapan dengan mengetik pesan di bawah.
-                </div>
-                """,
-                    unsafe_allow_html=True,
-                )
+        # Display chat history in a styled container with dynamic height
+        st.markdown("""
+        <style>
+        .chat-container {
+            height: calc(75vh - 250px);
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 1rem;
+            background: white;
+            margin-bottom: 0.5rem;
+        }
+        </style>
+        """, unsafe_allow_html=True)
 
+        # Wrap chat messages in the dynamic height container
+        st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+
+        if not st.session_state.messages:
             for message in st.session_state.messages:
                 # Get timestamp - use message timestamp if available, otherwise current time
                 if "timestamp" in message:
@@ -519,7 +563,7 @@ def show_chat_interface():
                         "ANALISIS KESIAPAN EKSPOR" in message["content"] or
                         "🎯 **ANALISIS KESIAPAN EKSPOR" in message["content"]
                     )
-                    
+
                     if is_export_analysis:
                         # Display export analysis without timestamp
                         st.markdown(
@@ -537,6 +581,9 @@ def show_chat_interface():
                         <div class="assistant-message">{message["content"]}</div>""",
                             unsafe_allow_html=True,
                         )
+
+        # Close the chat container div
+        st.markdown('</div>', unsafe_allow_html=True)
 
         # Chat input with file upload support
         prompt = st.chat_input(
@@ -608,6 +655,23 @@ def show_chat_interface():
                         }
                     )
 
+                    # Extract data immediately after bot response
+                    newly_extracted_data = extract_data_from_conversation(st.session_state.messages)
+                    export_data = extract_export_data_from_conversation(st.session_state.messages)
+
+                    # Merge export data with business data
+                    if export_data:
+                        if "export_readiness" in export_data:
+                            newly_extracted_data["export_readiness"] = export_data["export_readiness"]
+                        if "assessment_history" in export_data:
+                            newly_extracted_data["assessment_history"] = export_data["assessment_history"]
+
+                    # Store extracted data for immediate use in this render cycle
+                    st.session_state.latest_extracted_data = newly_extracted_data
+
+                    # Update memory bot
+                    update_memory_bot(newly_extracted_data)
+
                 # Rerun to show bot response
                 st.rerun()
             else:
@@ -637,88 +701,80 @@ def show_memory_bot():
         unsafe_allow_html=True,
     )
 
-    if st.session_state.messages:
-        # Extract basic business data from conversation (2 latest messages)
-        newly_extracted_data = extract_data_from_conversation(st.session_state.messages)
+    # Display memory_bot with enhanced export information
+    # Always use the persistent memory_bot data
+    memory_data = st.session_state.memory_bot
 
-        # Extract export readiness data from conversation (4 latest messages)
-        export_data = extract_export_data_from_conversation(st.session_state.messages)
+    # If there's latest extracted data available, use it for immediate preview
+    if hasattr(st.session_state, 'latest_extracted_data') and st.session_state.latest_extracted_data:
+        # Create a temporary merged view for display without modifying memory_bot
+        display_data = memory_data.copy()
+        for key, value in st.session_state.latest_extracted_data.items():
+            if is_meaningful_value(value):
+                if isinstance(value, dict) and key in display_data and isinstance(display_data[key], dict):
+                    display_data[key].update(value)
+                else:
+                    display_data[key] = value
+        memory_data = display_data
 
-        # Merge export data with business data
-        if export_data:
-            if "export_readiness" in export_data:
-                newly_extracted_data["export_readiness"] = export_data[
-                    "export_readiness"
-                ]
-            if "assessment_history" in export_data:
-                newly_extracted_data["assessment_history"] = export_data[
-                    "assessment_history"
-                ]
+    # Show business profile section
+    st.markdown("**👤 Business Profile**")
+    business_data = {
+        k: v
+        for k, v in memory_data.items()
+        if k not in ["export_readiness", "assessment_history"]
+    }
+    st.code(
+        json.dumps(business_data, indent=2, ensure_ascii=False), language="json"
+    )
 
-        # Update memory bot
-        update_memory_bot(newly_extracted_data)
-
-        # Display memory_bot with enhanced export information
-        memory_data = st.session_state.memory_bot
-
-        # Show business profile section
-        st.markdown("**👤 Business Profile**")
-        business_data = {
-            k: v
-            for k, v in memory_data.items()
-            if k not in ["export_readiness", "assessment_history"]
-        }
+    # Show export readiness section if data exists
+    export_readiness = memory_data.get("export_readiness", {})
+    if export_readiness and any(
+        v != "Not specified" and v != [] for v in export_readiness.values()
+    ):
+        st.markdown("**🌍 Export Readiness Profile**")
         st.code(
-            json.dumps(business_data, indent=2, ensure_ascii=False), language="json"
+            json.dumps(export_readiness, indent=2, ensure_ascii=False),
+            language="json",
         )
 
-        # Show export readiness section if data exists
-        export_readiness = memory_data.get("export_readiness", {})
-        if export_readiness and any(
-            v != "Not specified" and v != [] for v in export_readiness.values()
-        ):
-            st.markdown("**🌍 Export Readiness Profile**")
-            st.code(
-                json.dumps(export_readiness, indent=2, ensure_ascii=False),
-                language="json",
-            )
+    # Show assessment history if exists
+    assessment_history = memory_data.get("assessment_history", [])
+    if assessment_history:
+        st.markdown("**📊 Assessment History**")
+        st.code(
+            json.dumps(assessment_history, indent=2, ensure_ascii=False),
+            language="json",
+        )
 
-        # Show assessment history if exists
-        assessment_history = memory_data.get("assessment_history", [])
-        if assessment_history:
-            st.markdown("**📊 Assessment History**")
-            st.code(
-                json.dumps(assessment_history, indent=2, ensure_ascii=False),
-                language="json",
-            )
-        
-        # Add manual save button and download option
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("💾 Save to Database", help="Save Memory Bot data to database"):
-                if st.session_state.get('logged_in', False) and st.session_state.get('user'):
-                    from .auth import save_memory_bot_data
-                    user_id = st.session_state.user['id']
-                    success, message = save_memory_bot_data(user_id, st.session_state.memory_bot)
-                    if success:
-                        st.success("✅ Memory Bot data saved!")
-                    else:
-                        st.error(f"❌ {message}")
+    # Add manual save button and download option
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("💾 Save to Database", help="Save Memory Bot data to database"):
+            if st.session_state.get('logged_in', False) and st.session_state.get('user'):
+                from .auth import save_memory_bot_data
+                user_id = st.session_state.user['id']
+                success, message = save_memory_bot_data(user_id, st.session_state.memory_bot)
+                if success:
+                    st.success("✅ Memory Bot data saved!")
                 else:
-                    st.warning("⚠️ Please log in to save data")
-        
-        with col2:
-            # Download Memory Bot data as JSON
-            memory_json = json.dumps(memory_data, indent=2, ensure_ascii=False)
-            st.download_button(
-                label="📥 Download JSON",
-                data=memory_json,
-                file_name=f"memory_bot_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-                mime="application/json",
-                help="Download Memory Bot data as JSON file"
-            )
+                    st.error(f"❌ {message}")
+            else:
+                st.warning("⚠️ Please log in to save data")
 
-    else:
+    with col2:
+        # Download Memory Bot data as JSON
+        memory_json = json.dumps(memory_data, indent=2, ensure_ascii=False)
+        st.download_button(
+            label="📥 Download JSON",
+            data=memory_json,
+            file_name=f"memory_bot_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+            mime="application/json",
+            help="Download Memory Bot data as JSON file"
+        )
+
+    if not memory_data or all(v == "Not specified" or v == {} or v == [] for k, v in memory_data.items() if k != "extraction_timestamp"):
         st.write("Mulai percakapan untuk melihat data yang diekstrak...")
 
 
@@ -817,7 +873,7 @@ def perform_chat_based_export_analysis(target_country: str, memory_data: dict) -
 
 📈 **Breakdown per Kategori:**
 • Kepatuhan Regulasi: {assessment_data.get("category_scores", {}).get("regulatory_compliance", "N/A")}/100
-• Viabilitas Pasar: {assessment_data.get("category_scores", {}).get("market_viability", "N/A")}/100  
+• Viabilitas Pasar: {assessment_data.get("category_scores", {}).get("market_viability", "N/A")}/100
 • Kesiapan Dokumentasi: {assessment_data.get("category_scores", {}).get("documentation_readiness", "N/A")}/100
 • Posisi Kompetitif: {assessment_data.get("category_scores", {}).get("competitive_positioning", "N/A")}/100
 
@@ -861,7 +917,7 @@ def perform_chat_based_export_analysis(target_country: str, memory_data: dict) -
             ]
 
             st.session_state.memory_bot["assessment_history"].append(assessment_record)
-            
+
             # Auto-save updated Memory Bot data with assessment
             if st.session_state.get('logged_in', False) and st.session_state.get('user'):
                 from .auth import save_memory_bot_data
@@ -896,13 +952,13 @@ def check_profile_completeness(memory_data: dict) -> dict:
         memory_data.get("company_name", "Not specified") != "Not specified",
         memory_data.get("product_details", {}).get("name", "Not specified") != "Not specified",
         memory_data.get("product_category", "Not specified") != "Not specified",
-        memory_data.get("production_capacity", {}).get("amount", 0) > 0,
+        (lambda x: float(x) > 0 if str(x).replace('.', '').isdigit() else False)(memory_data.get("production_capacity", {}).get("amount", 0)),
         memory_data.get("production_location", {}).get("city", "Not specified") != "Not specified"
     ]
-    
+
     completed = sum(required_fields)
     total = len(required_fields)
-    
+
     missing_fields = []
     if not required_fields[0]:
         missing_fields.append("company_name")
@@ -914,7 +970,7 @@ def check_profile_completeness(memory_data: dict) -> dict:
         missing_fields.append("production_capacity")
     if not required_fields[4]:
         missing_fields.append("production_location")
-    
+
     return {
         "percentage": (completed / total) * 100,
         "is_complete": completed == total,
@@ -988,30 +1044,30 @@ def show_full_chat_page():
     # Initialize messages if not exists
     if "messages" not in st.session_state:
         st.session_state.messages = []
-    
+
     # Track current page and reset chat if coming from a different page
     current_page = "chat"
     last_page = st.session_state.get("last_page", "")
-    
+
     # Auto-reset chat if coming from a different page (not chat)
     if last_page != "" and last_page != "chat":
         st.session_state.messages = []
         st.session_state.user_id = str(uuid.uuid4())
-    
+
     # Update last page tracker
     st.session_state.last_page = current_page
-    
+
     # Check for export readiness trigger from sidebar
     has_export_trigger = st.session_state.get("trigger_export_readiness", False)
-    
+
     # Handle export readiness trigger from sidebar
     if has_export_trigger:
         # Clear the trigger flag
         st.session_state.trigger_export_readiness = False
-        
+
         # Clear any existing messages for fresh start with export readiness
         st.session_state.messages = []
-        
+
         # Auto-add export readiness request message
         auto_message = {
             "role": "user",
@@ -1020,10 +1076,10 @@ def show_full_chat_page():
             "timestamp": datetime.now().isoformat(),
         }
         st.session_state.messages.append(auto_message)
-        
+
         # Set flag to generate bot response
         st.session_state.generate_response = True
-    
+
     # Chat page header
     st.markdown(
         """

@@ -249,7 +249,7 @@ def show_login_page():
                 if success:
                     st.session_state.logged_in = True
                     st.session_state.user = result
-                    st.session_state.page = "chat"
+                    st.session_state.page = "dashboard"
                     st.success("Login berhasil!")
                     st.rerun()
                 else:
@@ -522,6 +522,17 @@ def show_navigation():
             )
 
             if st.button(
+                "📊  Dashboard Progress",
+                type="primary"
+                if st.session_state.page == "dashboard"
+                else "secondary",
+                use_container_width=True,
+                key="nav_dashboard",
+            ):
+                st.session_state.page = "dashboard"
+                st.rerun()
+
+            if st.button(
                 "📋  Langkah Ekspor Saya",
                 type="primary"
                 if st.session_state.page == "langkah-ekspor"
@@ -773,7 +784,13 @@ def show_business_profile_page():
     unit = capacity.get("unit", "unit")
     timeframe = capacity.get("timeframe", "bulan")
     
-    capacity_text = f"{amount} {unit} per {timeframe}" if amount > 0 else "Belum diisi"
+    # Convert amount to int/float for comparison
+    try:
+        amount_num = float(amount) if amount else 0
+    except (ValueError, TypeError):
+        amount_num = 0
+    
+    capacity_text = f"{amount} {unit} per {timeframe}" if amount_num > 0 else "Belum diisi"
     st.markdown(f"**Kapasitas Produksi:** {capacity_text}")
     
     # Export Readiness Section (if available)
