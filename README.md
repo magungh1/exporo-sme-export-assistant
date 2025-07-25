@@ -2,6 +2,7 @@
 
 A friendly Business Profile Assistant helping Indonesian SMEs prepare for export through natural conversation and AI-powered data extraction.
 
+DEMO: https://drive.google.com/file/d/1uSIRJQbKrhUMdipkv3BKiV4AlwJ5XbS3/view?usp=sharing
 ## ✨ Features
 
 - **Authentication System** - Secure user registration and login
