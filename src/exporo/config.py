@@ -22,20 +22,20 @@ APP_ICON = "🚀"
 DEFAULT_EXTRACTED_DATA = {
     "company_name": "Not specified",
     "product_details": {
-        "name": "Not specified", 
-        "description": "Not specified", 
-        "unique_features": "Not specified"
+        "name": "Not specified",
+        "description": "Not specified",
+        "unique_features": "Not specified",
     },
     "production_capacity": {
-        "amount": 0, 
-        "unit": "Not specified", 
-        "timeframe": "Not specified"
+        "amount": 0,
+        "unit": "Not specified",
+        "timeframe": "Not specified",
     },
     "product_category": "Not specified",
     "production_location": {
-        "city": "Not specified", 
-        "province": "Not specified", 
-        "country": "Indonesia"
+        "city": "Not specified",
+        "province": "Not specified",
+        "country": "Indonesia",
     },
     "business_background": "Not specified",
     "export_readiness": {
@@ -47,20 +47,22 @@ DEFAULT_EXTRACTED_DATA = {
         "timeline_preference": "Not specified",
         "main_challenges": [],
         "certifications_obtained": [],
-        "export_volume_target": "Not specified"
+        "export_volume_target": "Not specified",
     },
     "assessment_history": [],
     "extraction_timestamp": datetime.now().isoformat(),
-    "conversation_language": "Indonesian"
+    "conversation_language": "Indonesian",
 }
 
 # Bot prompts
-USER_PROFILING_PROMPT = """You are Exporo, a friendly Business Profile Assistant helping Indonesian SMEs prepare for export. Your goal is to gather essential information about their business through a natural, conversational approach.
+USER_PROFILING_PROMPT = """You are Exporo, a friendly Business Profile Assistant helping Indonesian SMEs prepare for export. Your goal is to gather essential information about their business through a natural, conversational approach and guide them through export readiness assessment.
 
 **Your Objectives:**
 1. Collect comprehensive business information
 2. Make the user feel comfortable sharing details
 3. Guide them through the profiling process step-by-step
+4. Assess export readiness for specific target countries
+5. Provide actionable export guidance
 
 **Information to Gather:**
 - Product details (name, description, unique features)
@@ -69,6 +71,22 @@ USER_PROFILING_PROMPT = """You are Exporo, a friendly Business Profile Assistant
 - Production location (city, province)
 - Company name
 - Brief business background
+- Export goals and target countries
+- Current export experience
+- Budget and timeline for export
+
+**Export Readiness Assessment:**
+When user mentions interest in specific countries or export, offer to conduct export readiness assessment:
+- Ask about target export countries (US, EU, Japan, Singapore, Malaysia, Australia, South Korea, China)
+- Discuss required certifications and compliance
+- Assess market viability and competition
+- Provide timeline and action plan
+- Suggest starting with easier markets (Malaysia, Singapore) before harder ones (US, EU)
+
+**Special Commands:**
+- When user says "cek kesiapan ekspor" or "export readiness", start comprehensive assessment
+- When user mentions specific country, provide country-specific guidance
+- Offer to create action plan when assessment is complete
 
 **Conversation Guidelines:**
 - Start with a warm greeting in Bahasa Indonesia
@@ -78,6 +96,7 @@ USER_PROFILING_PROMPT = """You are Exporo, a friendly Business Profile Assistant
 - If answers are vague, ask clarifying follow-ups
 - Be encouraging and supportive
 - Explain why each piece of information matters for export
+- When appropriate, transition to export readiness discussion
 
 **Example Flow:**
 1. Greeting: "Halo! Saya Exporo, asisten profil bisnis Anda. Saya akan membantu Anda membuat profil bisnis untuk persiapan ekspor. Boleh saya tahu nama perusahaan Anda?"
@@ -85,13 +104,75 @@ USER_PROFILING_PROMPT = """You are Exporo, a friendly Business Profile Assistant
 3. Category: "Produk Anda termasuk dalam kategori apa? (Misalnya: furniture, tekstil, makanan olahan, dll)"
 4. Capacity: "Berapa kapasitas produksi Anda saat ini per bulan?"
 5. Location: "Di mana lokasi produksi Anda? (Kota dan Provinsi)"
+6. Export Interest: "Negara mana yang Anda targetkan untuk ekspor? Atau ingin saya bantu pilih negara yang cocok?"
+7. Assessment Offer: "Apakah Anda ingin saya lakukan analisis kesiapan ekspor untuk produk Anda?"
 
 **Important:**
 - Always introduce yourself as Exporo at the beginning
 - Build rapport before diving into questions
+- Seamlessly integrate export readiness into conversation
 - If user seems hesitant, explain the benefits of completing their profile
 - Always thank them for their time and information
-- Keep responses friendly and encouraging"""
+- Keep responses friendly and encouraging
+- Offer export readiness assessment when profile is complete"""
+
+EXPORT_FOCUSED_PROMPT = """You are Exporo, an expert export readiness specialist helping Indonesian SMEs expand to international markets. The user's business profile is complete and you should focus entirely on export preparation and international market entry.
+
+**USER'S COMPLETE BUSINESS PROFILE:**
+- Company: {company_name}
+- Product: {product_name}
+- Category: {product_category}
+- Production Capacity: {production_capacity}
+- Location: {production_location}
+
+**YOUR EXPORT SPECIALIST ROLE:**
+You are now in export readiness mode. Focus on helping them:
+1. Identify optimal target countries for their product
+2. Assess export readiness for specific markets
+3. Provide country-specific requirements and certifications
+4. Create actionable export strategies and timelines
+5. Analyze market opportunities and competitive positioning
+
+**CONVERSATION APPROACH:**
+- Start by acknowledging their complete profile and transition to export focus
+- Example: "Perfect! Profil bisnis Anda sudah lengkap. Sekarang mari kita fokus pada peluang ekspor untuk [product]. Negara mana yang Anda targetkan untuk ekspor?"
+- Ask about their export goals, target countries, and timeline
+- Provide specific guidance for mentioned countries
+- Offer comprehensive export readiness assessments
+- Suggest starting with easier markets (Malaysia, Singapore) before challenging ones (US, EU)
+
+**EXPORT ASSESSMENT CAPABILITIES:**
+When user mentions specific countries or asks for export analysis:
+- Trigger comprehensive export readiness assessment
+- Provide detailed market analysis and requirements
+- Suggest certification pathways and compliance steps
+- Create realistic timelines and action plans
+- Offer comparative analysis between different target markets
+
+**SPECIAL COMMANDS:**
+- "cek kesiapan ekspor [country]" → Immediate comprehensive assessment
+- Country mentions → Provide country-specific guidance and requirements
+- "perbandingan negara" → Compare multiple target markets
+- "sertifikasi" → Detail certification requirements
+
+**CONVERSATION GUIDELINES:**
+- Maintain enthusiastic, expert tone about export opportunities
+- Use specific market knowledge and trade requirements
+- Be encouraging while being realistic about challenges
+- Provide actionable next steps for export preparation
+- Reference their complete business data in recommendations
+- Guide them through export process step by step
+
+**KEY TOPICS TO EXPLORE:**
+- Target market selection based on their product category
+- Export documentation and compliance requirements
+- Certification needs for specific countries
+- Market entry strategies and distribution channels
+- Pricing strategies for international markets
+- Export financing and logistics considerations
+- Timeline planning for market entry
+
+Always maintain the friendly, supportive Exporo personality while demonstrating deep export expertise."""
 
 DATA_EXTRACTION_PROMPT = """You are a Data Extraction Assistant. Your role is to parse conversation history and extract structured business profile data.
 
@@ -125,10 +206,11 @@ DATA_EXTRACTION_PROMPT = """You are a Data Extraction Assistant. Your role is to
 - If information is ambiguous, mark as "unclear" or "not specified"
 - Standardize units (e.g., convert "dozen" to pieces)
 - Normalize location names to proper case
-- For production capacity, identify the timeframe (daily/weekly/monthly/yearly)
+- For production capacity, identify the timeframe (per hari/minggu/bulan/tahun)
 - Include any additional relevant details mentioned
 
 **Output Format:**
+EXPORT THE FUCKING JSON YOU FUCK WITH THE WHOLE DATA
 Return clean JSON without any markdown formatting or explanation."""
 
 EXPORT_DATA_EXTRACTION_PROMPT = """You are a Data Extraction Assistant specializing in export readiness information. Parse the conversation and extract structured export-related data.
@@ -214,7 +296,7 @@ Return ONLY valid JSON with this exact structure:
   "overall_score": [number 0-100],
   "category_scores": {{
     "regulatory_compliance": [number 0-100],
-    "market_viability": [number 0-100], 
+    "market_viability": [number 0-100],
     "documentation_readiness": [number 0-100],
     "competitive_positioning": [number 0-100]
   }},
@@ -234,7 +316,7 @@ Return ONLY valid JSON with this exact structure:
     "Key advantage 2"
   ],
   "potential_challenges": [
-    "Main challenge 1", 
+    "Main challenge 1",
     "Main challenge 2"
   ],
   "export_readiness_level": "[Ready/Needs Preparation/Significant Work Required]"
@@ -248,13 +330,13 @@ SHARED_CSS = """
     .stApp {
         background-color: #f0f2f5;
     }
-    
+
     .main .block-container {
         padding-top: 2rem;
         padding-bottom: 0rem;
         max-width: 100%;
     }
-    
+
     /* Login/Signup Styles */
     .form-container {
         background: linear-gradient(145deg, #ffffff, #f8f9fb);
@@ -265,7 +347,7 @@ SHARED_CSS = """
         backdrop-filter: blur(10px);
         margin: 2rem 0;
     }
-    
+
     .welcome-container {
         background: linear-gradient(135deg, #87CEEB, #B0E0E6);
         padding: 3rem;
@@ -275,7 +357,7 @@ SHARED_CSS = """
         box-shadow: 0 8px 32px rgba(0,0,0,0.15);
         border: 1px solid rgba(255,255,255,0.3);
     }
-    
+
     .blue-gradient {
         background: linear-gradient(135deg, #87CEEB, #4285F4);
         color: white;
@@ -285,7 +367,7 @@ SHARED_CSS = """
         box-shadow: 0 8px 32px rgba(66, 133, 244, 0.3);
         border: 1px solid rgba(255,255,255,0.2);
     }
-    
+
     /* Chat Interface Styles */
     .user-message {
         background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
@@ -302,7 +384,7 @@ SHARED_CSS = """
         color: #1565c0;
         backdrop-filter: blur(5px);
     }
-    
+
     .assistant-message {
         background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
         border-radius: 18px 18px 18px 4px;
@@ -318,7 +400,7 @@ SHARED_CSS = """
         color: #e65100;
         backdrop-filter: blur(5px);
     }
-    
+
     .message-time {
         font-size: 11px;
         color: #667781;
@@ -327,7 +409,7 @@ SHARED_CSS = """
         opacity: 0.8;
         font-weight: 500;
     }
-    
+
     .chat-header {
         background: linear-gradient(90deg, #25d366, #20c157);
         color: white;
@@ -339,7 +421,7 @@ SHARED_CSS = """
         box-shadow: 0 6px 20px rgba(37, 211, 102, 0.3);
         border: 1px solid rgba(255,255,255,0.2);
     }
-    
+
     /* Enhanced Button Styles */
     .stButton > button {
         background: linear-gradient(135deg, #25d366, #20c157);
@@ -352,13 +434,13 @@ SHARED_CSS = """
         box-shadow: 0 4px 15px rgba(37, 211, 102, 0.3);
         border: 1px solid rgba(255,255,255,0.2);
     }
-    
+
     .stButton > button:hover {
         background: linear-gradient(135deg, #20c157, #1ea34a);
         transform: translateY(-2px);
         box-shadow: 0 6px 20px rgba(37, 211, 102, 0.4);
     }
-    
+
     /* Chat Input Styling */
     .stChatInput {
         background: linear-gradient(145deg, #ffffff, #f8f9fb);
@@ -366,29 +448,29 @@ SHARED_CSS = """
         box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         border: 1px solid rgba(0,0,0,0.05);
     }
-    
+
     .stChatInput > div {
         border-radius: 25px;
         border: 1px solid #e5e5e5;
         background: transparent;
     }
-    
+
     /* Sidebar Styles */
     .stSidebar {
         background: linear-gradient(180deg, #2c3e50, #34495e) !important;
     }
-    
+
     .stSidebar > div {
         background: linear-gradient(180deg, #2c3e50, #34495e) !important;
         color: white !important;
     }
-    
+
     .stSidebar .block-container {
         background: transparent !important;
         color: white !important;
         padding: 2rem 1rem !important;
     }
-    
+
     .stSidebar .element-container {
         background: transparent !important;
         border: none !important;
@@ -396,7 +478,7 @@ SHARED_CSS = """
         padding: 0.2rem 0 !important;
         margin: 0 !important;
     }
-    
+
     /* Code Block Styling */
     .stCode {
         background: linear-gradient(145deg, #f8f9fa, #e9ecef) !important;
@@ -404,7 +486,7 @@ SHARED_CSS = """
         border: 1px solid rgba(0,0,0,0.1) !important;
         box-shadow: inset 0 2px 4px rgba(0,0,0,0.05) !important;
     }
-    
+
     /* Container Backgrounds */
     .stContainer {
         background: rgba(255,255,255,0.7);
@@ -412,7 +494,7 @@ SHARED_CSS = """
         backdrop-filter: blur(10px);
         border: 1px solid rgba(255,255,255,0.2);
     }
-    
+
     /* Download Button Special Styling */
     .stDownloadButton > button {
         background: linear-gradient(135deg, #6c5ce7, #5f3dc4);
@@ -424,7 +506,7 @@ SHARED_CSS = """
         box-shadow: 0 4px 15px rgba(108, 92, 231, 0.3);
         transition: all 0.3s ease;
     }
-    
+
     .stDownloadButton > button:hover {
         background: linear-gradient(135deg, #5f3dc4, #553c9a);
         transform: translateY(-1px);
