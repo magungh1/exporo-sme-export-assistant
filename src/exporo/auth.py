@@ -9,6 +9,9 @@ import hashlib
 import time
 import re
 import json
+import asyncio
+import concurrent.futures
+import threading
 from datetime import datetime
 from .config import DATABASE_NAME, DEFAULT_EXTRACTED_DATA
 import uuid
@@ -141,14 +144,73 @@ def get_user_count():
         return 0
 
 
+def is_meaningful_value_for_db(value):
+    """Check if a value is meaningful and should be saved to database"""
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return value not in ["", "Not specified", "extraction_error", "Belum diisi", "unclear"]
+    if isinstance(value, (list, dict)):
+        return len(value) > 0
+    if isinstance(value, (int, float)):
+        return True  # Allow 0 as a valid value
+    return bool(value)
+
+
+def filter_meaningful_data(data: dict) -> dict:
+    """Filter out empty/meaningless values from memory data before saving"""
+    if not isinstance(data, dict):
+        return {}
+    
+    filtered_data = {}
+    
+    for key, value in data.items():
+        if key == "extraction_timestamp":
+            # Always keep timestamp
+            filtered_data[key] = value
+        elif key == "conversation_language":
+            # Always keep language setting
+            filtered_data[key] = value
+        elif isinstance(value, dict):
+            # For nested dictionaries, recursively filter
+            filtered_nested = filter_meaningful_data(value)
+            if filtered_nested:  # Only add if there's meaningful content
+                filtered_data[key] = filtered_nested
+        elif isinstance(value, list):
+            # For lists, filter out empty items
+            if value and any(is_meaningful_value_for_db(item) for item in value):
+                meaningful_items = []
+                for item in value:
+                    if isinstance(item, dict):
+                        filtered_item = filter_meaningful_data(item)
+                        if filtered_item:
+                            meaningful_items.append(filtered_item)
+                    elif is_meaningful_value_for_db(item):
+                        meaningful_items.append(item)
+                if meaningful_items:
+                    filtered_data[key] = meaningful_items
+        elif is_meaningful_value_for_db(value):
+            # For other values, check if meaningful
+            filtered_data[key] = value
+    
+    return filtered_data
+
+
 def save_memory_bot_data(user_id: int, memory_data: dict):
-    """Save Memory Bot data to database"""
+    """Save Memory Bot data to database (only meaningful values)"""
     try:
+        # Filter out empty/meaningless values
+        filtered_data = filter_meaningful_data(memory_data)
+        
+        # If no meaningful data to save, return success but don't save
+        if not filtered_data or filtered_data == {"extraction_timestamp": filtered_data.get("extraction_timestamp"), "conversation_language": filtered_data.get("conversation_language")}:
+            return True, "No meaningful data to save - skipped database operation"
+        
         conn = sqlite3.connect(DATABASE_NAME)
         cursor = conn.cursor()
         
-        # Convert memory data to JSON string
-        memory_json = json.dumps(memory_data, ensure_ascii=False, default=str)
+        # Convert filtered memory data to JSON string
+        memory_json = json.dumps(filtered_data, ensure_ascii=False, default=str)
         
         # Use INSERT OR REPLACE for upsert behavior
         cursor.execute("""
@@ -158,7 +220,12 @@ def save_memory_bot_data(user_id: int, memory_data: dict):
         
         conn.commit()
         conn.close()
-        return True, "Memory Bot data saved successfully!"
+        
+        # Count meaningful fields saved
+        meaningful_count = sum(1 for key, value in filtered_data.items() 
+                             if key not in ["extraction_timestamp", "conversation_language"])
+        
+        return True, f"Memory Bot data saved successfully! ({meaningful_count} meaningful fields)"
         
     except Exception as e:
         if 'conn' in locals():
@@ -189,6 +256,60 @@ def load_memory_bot_data(user_id: int) -> dict:
     except Exception as e:
         print(f"Error loading Memory Bot data: {e}")
         return DEFAULT_EXTRACTED_DATA.copy()
+
+
+class AsyncDatabaseOperations:
+    """Async wrapper for database operations to prevent blocking UI"""
+    
+    @staticmethod
+    def _execute_db_operation(operation_func, *args, **kwargs):
+        """Execute database operation in thread"""
+        return operation_func(*args, **kwargs)
+    
+    @staticmethod
+    def save_memory_bot_data_async(user_id: int, memory_data: dict):
+        """Save Memory Bot data asynchronously (only meaningful values)"""
+        def _save_operation():
+            # Check if there's meaningful data before proceeding
+            filtered_data = filter_meaningful_data(memory_data)
+            meaningful_count = sum(1 for key, value in filtered_data.items() 
+                                 if key not in ["extraction_timestamp", "conversation_language"])
+            
+            if meaningful_count > 0:
+                print(f"💾 Async save: {meaningful_count} meaningful fields for user {user_id}")
+                return save_memory_bot_data(user_id, memory_data)
+            else:
+                print(f"⏭️ Async save skipped: No meaningful data for user {user_id}")
+                return True, "No meaningful data to save - skipped database operation"
+        
+        # Run in thread pool to avoid blocking
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(_save_operation)
+            try:
+                return future.result(timeout=10)  # 10 second timeout
+            except concurrent.futures.TimeoutError:
+                return False, "Database save operation timed out"
+            except Exception as e:
+                return False, f"Async save error: {str(e)}"
+    
+    @staticmethod
+    def load_memory_bot_data_async(user_id: int):
+        """Load Memory Bot data asynchronously"""
+        def _load_operation():
+            return load_memory_bot_data(user_id)
+        
+        # Run in thread pool to avoid blocking
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(_load_operation)
+            try:
+                return future.result(timeout=10)  # 10 second timeout
+            except concurrent.futures.TimeoutError:
+                print("Database load operation timed out, returning default data")
+                return DEFAULT_EXTRACTED_DATA.copy()
+            except Exception as e:
+                print(f"Async load error: {str(e)}, returning default data")
+                return DEFAULT_EXTRACTED_DATA.copy()
+
 
 def init_auth_session_state():
     """Initialize authentication-related session state"""

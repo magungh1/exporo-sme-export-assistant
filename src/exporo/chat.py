@@ -9,6 +9,10 @@ from datetime import datetime
 import uuid
 import base64
 import io
+import asyncio
+import concurrent.futures
+import threading
+import time
 from google import genai
 from google.genai import types
 from .config import (
@@ -338,6 +342,54 @@ def extract_export_data_from_conversation(conversation_history):
         return {}
 
 
+def extract_data_parallel(conversation_history):
+    """Extract both business profile and export data in parallel using ThreadPoolExecutor"""
+    
+    start_time = time.time()
+    
+    def run_profile_extraction():
+        """Run profile data extraction"""
+        profile_start = time.time()
+        result = extract_data_from_conversation(conversation_history)
+        profile_time = time.time() - profile_start
+        print(f"⚡ Profile extraction completed in {profile_time:.2f}s")
+        return result
+    
+    def run_export_extraction():
+        """Run export data extraction"""
+        export_start = time.time()
+        result = extract_export_data_from_conversation(conversation_history)
+        export_time = time.time() - export_start  
+        print(f"⚡ Export extraction completed in {export_time:.2f}s")
+        return result
+    
+    try:
+        # Use ThreadPoolExecutor to run both extractions in parallel
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            # Submit both tasks
+            profile_future = executor.submit(run_profile_extraction)
+            export_future = executor.submit(run_export_extraction)
+            
+            # Get results (this will wait for both to complete)
+            profile_data = profile_future.result(timeout=30)  # 30 second timeout
+            export_data = export_future.result(timeout=30)
+            
+            total_time = time.time() - start_time
+            print(f"🚀 Parallel data extraction completed in {total_time:.2f}s")
+            
+            return profile_data, export_data
+            
+    except concurrent.futures.TimeoutError:
+        print("Warning: Data extraction timed out, falling back to default data")
+        return DEFAULT_EXTRACTED_DATA.copy(), {}
+    except Exception as e:
+        print(f"Error in parallel data extraction: {e}")
+        # Fallback to sequential extraction
+        profile_data = extract_data_from_conversation(conversation_history)
+        export_data = extract_export_data_from_conversation(conversation_history)
+        return profile_data, export_data
+
+
 def update_memory_bot(newly_extracted_data):
     """Update memory_bot with meaningful values from extracted_data - persistent dictionary with existing data protection"""
     if newly_extracted_data and isinstance(newly_extracted_data, dict):
@@ -399,11 +451,11 @@ def update_memory_bot(newly_extracted_data):
         # Update timestamp
         st.session_state.extracted_data["extraction_timestamp"] = datetime.now().isoformat()
 
-        # Auto-save Memory Bot data to database if user is logged in
+        # Auto-save Memory Bot data to database if user is logged in (async)
         if st.session_state.get('logged_in', False) and st.session_state.get('user'):
-            from .auth import save_memory_bot_data
+            from .auth import AsyncDatabaseOperations
             user_id = st.session_state.user['id']
-            success, message = save_memory_bot_data(user_id, st.session_state.memory_bot)
+            success, message = AsyncDatabaseOperations.save_memory_bot_data_async(user_id, st.session_state.memory_bot)
             if not success:
                 print(f"Failed to auto-save Memory Bot data: {message}")
 
@@ -510,82 +562,64 @@ def show_chat_interface():
             unsafe_allow_html=True,
         )
 
-        # Display chat history in a styled container with dynamic height
-        st.markdown("""
-        <style>
-        .chat-container {
-            height: calc(75vh - 250px);
-            overflow-y: auto;
-            border: 1px solid #e0e0e0;
-            border-radius: 10px;
-            padding: 1rem;
-            background: white;
-            margin-bottom: 0.5rem;
-        }
-        </style>
-        """, unsafe_allow_html=True)
-
-        # Wrap chat messages in the dynamic height container
-        st.markdown('<div class="chat-container">', unsafe_allow_html=True)
-
-        if not st.session_state.messages:
-            for message in st.session_state.messages:
-                # Get timestamp - use message timestamp if available, otherwise current time
-                if "timestamp" in message:
-                    msg_time = datetime.fromisoformat(message["timestamp"]).strftime(
-                        "%H:%M"
-                    )
-                else:
-                    msg_time = datetime.now().strftime("%H:%M")
-
-                if message["role"] == "user":
-                    st.markdown(
-                        f"""
-                    <div class="user-message">
-                        {message["content"]}
-                    </div>
-                    """,
-                        unsafe_allow_html=True,
-                    )
-
-                    # Display images if present
-                    if message.get("images"):
-                        for img in message["images"]:
-                            st.image(
-                                base64.b64decode(img["data"]),
-                                caption="📷 Gambar produk",
-                                width=300,
-                            )
-
-                else:  # assistant message
-                    # Check if this is an export readiness analysis response
-                    is_export_analysis = (
-                        "ANALISIS KESIAPAN EKSPOR" in message["content"] or
-                        "🎯 **ANALISIS KESIAPAN EKSPOR" in message["content"]
-                    )
-
-                    if is_export_analysis:
-                        # Display export analysis without timestamp
+        # Use Streamlit's native container with proper height
+        chat_container = st.container(height=500, border=True)
+        
+        with chat_container:
+            if st.session_state.messages:
+                for message in st.session_state.messages:
+                    if message["role"] == "user":
                         st.markdown(
                             f"""
-                        <div class="assistant-message">
+                        <div class="user-message">
                             {message["content"]}
                         </div>
                         """,
                             unsafe_allow_html=True,
                         )
-                    else:
-                        # Display regular messages with timestamp
+
+                        # Display images if present
+                        if message.get("images"):
+                            for img in message["images"]:
+                                st.image(
+                                    base64.b64decode(img["data"]),
+                                    caption="📷 Gambar produk",
+                                    width=300,
+                                )
+
+                    else:  # assistant message
                         st.markdown(
                             f"""
                         <div class="assistant-message">{message["content"]}</div>""",
                             unsafe_allow_html=True,
                         )
+            else:
+                # Show welcome message when no messages exist
+                st.markdown(
+                    """
+                    <div style="
+                        text-align: center;
+                        padding: 2rem;
+                        color: #7f8c8d;
+                    ">
+                        <h3 style="color: #2c3e50; margin-bottom: 1rem;">🤖 Selamat datang di Exporo Chat!</h3>
+                        <p style="margin-bottom: 0.5rem;">Saya siap membantu Anda mempersiapkan bisnis untuk ekspor.</p>
+                        <p style="margin-bottom: 1rem;">Mulai percakapan dengan mengetik pesan di bawah ini.</p>
+                        <div style="
+                            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+                            padding: 1rem;
+                            border-radius: 10px;
+                            border-left: 4px solid #2196f3;
+                            margin: 1rem 0;
+                        ">
+                            <strong>💡 Tips:</strong> Anda bisa ceritakan tentang produk, perusahaan, atau langsung minta analisis kesiapan ekspor!
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
-        # Close the chat container div
-        st.markdown('</div>', unsafe_allow_html=True)
-
-        # Chat input with file upload support
+        # Chat input with file upload support  
         prompt = st.chat_input(
             "Ketik pesan Anda dan/atau upload gambar produk...",
             accept_file=True,
@@ -655,9 +689,8 @@ def show_chat_interface():
                         }
                     )
 
-                    # Extract data immediately after bot response
-                    newly_extracted_data = extract_data_from_conversation(st.session_state.messages)
-                    export_data = extract_export_data_from_conversation(st.session_state.messages)
+                    # Extract data immediately after bot response (parallel processing)
+                    newly_extracted_data, export_data = extract_data_parallel(st.session_state.messages)
 
                     # Merge export data with business data
                     if export_data:
@@ -918,11 +951,11 @@ def perform_chat_based_export_analysis(target_country: str, memory_data: dict) -
 
             st.session_state.memory_bot["assessment_history"].append(assessment_record)
 
-            # Auto-save updated Memory Bot data with assessment
+            # Auto-save updated Memory Bot data with assessment (async)
             if st.session_state.get('logged_in', False) and st.session_state.get('user'):
-                from .auth import save_memory_bot_data
+                from .auth import AsyncDatabaseOperations
                 user_id = st.session_state.user['id']
-                save_memory_bot_data(user_id, st.session_state.memory_bot)
+                AsyncDatabaseOperations.save_memory_bot_data_async(user_id, st.session_state.memory_bot)
 
             return readable_response
 
@@ -944,6 +977,88 @@ def perform_chat_based_export_analysis(target_country: str, memory_data: dict) -
 
 💡 **Saran:** Coba lagi dalam beberapa saat atau pastikan koneksi internet Anda stabil.
         """
+
+
+def perform_multi_country_export_analysis(target_countries: list, memory_data: dict) -> dict:
+    """Perform parallel export readiness analysis for multiple countries"""
+    
+    start_time = time.time()
+    
+    def analyze_single_country(country: str):
+        """Wrapper function for single country analysis"""
+        try:
+            country_start = time.time()
+            response = perform_chat_based_export_analysis(country, memory_data)
+            country_time = time.time() - country_start
+            print(f"⚡ Analysis for {country} completed in {country_time:.2f}s")
+            return country, response, None
+        except Exception as e:
+            return country, None, str(e)
+    
+    if not target_countries:
+        return {}
+    
+    print(f"🚀 Starting parallel analysis for {len(target_countries)} countries")
+    results = {}
+    
+    try:
+        # Use ThreadPoolExecutor for parallel analysis
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(target_countries), 4)) as executor:
+            # Submit all analysis tasks
+            future_to_country = {
+                executor.submit(analyze_single_country, country): country 
+                for country in target_countries
+            }
+            
+            # Collect results as they complete
+            for future in concurrent.futures.as_completed(future_to_country, timeout=60):
+                country, response, error = future.result()
+                
+                if error:
+                    results[country] = {
+                        "success": False,
+                        "error": error,
+                        "response": f"❌ **Error analyzing {country}:** {error}"
+                    }
+                else:
+                    results[country] = {
+                        "success": True,
+                        "error": None,
+                        "response": response
+                    }
+                    
+    except concurrent.futures.TimeoutError:
+        # Handle timeout - mark incomplete analyses
+        for country in target_countries:
+            if country not in results:
+                results[country] = {
+                    "success": False,
+                    "error": "Analysis timed out",
+                    "response": f"⏱️ **Analysis timed out for {country}**"
+                }
+    except Exception as e:
+        # Fallback to sequential processing
+        print(f"Parallel analysis failed, falling back to sequential: {e}")
+        for country in target_countries:
+            try:
+                response = perform_chat_based_export_analysis(country, memory_data)
+                results[country] = {
+                    "success": True,
+                    "error": None,
+                    "response": response
+                }
+            except Exception as country_error:
+                results[country] = {
+                    "success": False,
+                    "error": str(country_error),
+                    "response": f"❌ **Error analyzing {country}:** {str(country_error)}"
+                }
+    
+    total_time = time.time() - start_time
+    successful_countries = sum(1 for r in results.values() if r.get("success", False))
+    print(f"🚀 Multi-country analysis completed: {successful_countries}/{len(target_countries)} countries in {total_time:.2f}s")
+    
+    return results
 
 
 def check_profile_completeness(memory_data: dict) -> dict:

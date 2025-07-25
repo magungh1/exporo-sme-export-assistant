@@ -206,10 +206,11 @@ DATA_EXTRACTION_PROMPT = """You are a Data Extraction Assistant. Your role is to
 - If information is ambiguous, mark as "unclear" or "not specified"
 - Standardize units (e.g., convert "dozen" to pieces)
 - Normalize location names to proper case
-- For production capacity, identify the timeframe (daily/weekly/monthly/yearly)
+- For production capacity, identify the timeframe (per hari/minggu/bulan/tahun)
 - Include any additional relevant details mentioned
 
 **Output Format:**
+EXPORT THE FUCKING JSON YOU FUCK WITH THE WHOLE DATA
 Return clean JSON without any markdown formatting or explanation."""
 
 EXPORT_DATA_EXTRACTION_PROMPT = """You are a Data Extraction Assistant specializing in export readiness information. Parse the conversation and extract structured export-related data.
@@ -295,7 +296,7 @@ Return ONLY valid JSON with this exact structure:
   "overall_score": [number 0-100],
   "category_scores": {{
     "regulatory_compliance": [number 0-100],
-    "market_viability": [number 0-100], 
+    "market_viability": [number 0-100],
     "documentation_readiness": [number 0-100],
     "competitive_positioning": [number 0-100]
   }},
@@ -315,7 +316,7 @@ Return ONLY valid JSON with this exact structure:
     "Key advantage 2"
   ],
   "potential_challenges": [
-    "Main challenge 1", 
+    "Main challenge 1",
     "Main challenge 2"
   ],
   "export_readiness_level": "[Ready/Needs Preparation/Significant Work Required]"
@@ -329,13 +330,13 @@ SHARED_CSS = """
     .stApp {
         background-color: #f0f2f5;
     }
-    
+
     .main .block-container {
         padding-top: 2rem;
         padding-bottom: 0rem;
         max-width: 100%;
     }
-    
+
     /* Login/Signup Styles */
     .form-container {
         background: linear-gradient(145deg, #ffffff, #f8f9fb);
@@ -346,7 +347,7 @@ SHARED_CSS = """
         backdrop-filter: blur(10px);
         margin: 2rem 0;
     }
-    
+
     .welcome-container {
         background: linear-gradient(135deg, #87CEEB, #B0E0E6);
         padding: 3rem;
@@ -356,7 +357,7 @@ SHARED_CSS = """
         box-shadow: 0 8px 32px rgba(0,0,0,0.15);
         border: 1px solid rgba(255,255,255,0.3);
     }
-    
+
     .blue-gradient {
         background: linear-gradient(135deg, #87CEEB, #4285F4);
         color: white;
@@ -366,7 +367,7 @@ SHARED_CSS = """
         box-shadow: 0 8px 32px rgba(66, 133, 244, 0.3);
         border: 1px solid rgba(255,255,255,0.2);
     }
-    
+
     /* Chat Interface Styles */
     .user-message {
         background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
@@ -383,7 +384,7 @@ SHARED_CSS = """
         color: #1565c0;
         backdrop-filter: blur(5px);
     }
-    
+
     .assistant-message {
         background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
         border-radius: 18px 18px 18px 4px;
@@ -399,7 +400,7 @@ SHARED_CSS = """
         color: #e65100;
         backdrop-filter: blur(5px);
     }
-    
+
     .message-time {
         font-size: 11px;
         color: #667781;
@@ -408,7 +409,7 @@ SHARED_CSS = """
         opacity: 0.8;
         font-weight: 500;
     }
-    
+
     .chat-header {
         background: linear-gradient(90deg, #25d366, #20c157);
         color: white;
@@ -420,7 +421,7 @@ SHARED_CSS = """
         box-shadow: 0 6px 20px rgba(37, 211, 102, 0.3);
         border: 1px solid rgba(255,255,255,0.2);
     }
-    
+
     /* Enhanced Button Styles */
     .stButton > button {
         background: linear-gradient(135deg, #25d366, #20c157);
@@ -433,13 +434,13 @@ SHARED_CSS = """
         box-shadow: 0 4px 15px rgba(37, 211, 102, 0.3);
         border: 1px solid rgba(255,255,255,0.2);
     }
-    
+
     .stButton > button:hover {
         background: linear-gradient(135deg, #20c157, #1ea34a);
         transform: translateY(-2px);
         box-shadow: 0 6px 20px rgba(37, 211, 102, 0.4);
     }
-    
+
     /* Chat Input Styling */
     .stChatInput {
         background: linear-gradient(145deg, #ffffff, #f8f9fb);
@@ -447,29 +448,29 @@ SHARED_CSS = """
         box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         border: 1px solid rgba(0,0,0,0.05);
     }
-    
+
     .stChatInput > div {
         border-radius: 25px;
         border: 1px solid #e5e5e5;
         background: transparent;
     }
-    
+
     /* Sidebar Styles */
     .stSidebar {
         background: linear-gradient(180deg, #2c3e50, #34495e) !important;
     }
-    
+
     .stSidebar > div {
         background: linear-gradient(180deg, #2c3e50, #34495e) !important;
         color: white !important;
     }
-    
+
     .stSidebar .block-container {
         background: transparent !important;
         color: white !important;
         padding: 2rem 1rem !important;
     }
-    
+
     .stSidebar .element-container {
         background: transparent !important;
         border: none !important;
@@ -477,7 +478,7 @@ SHARED_CSS = """
         padding: 0.2rem 0 !important;
         margin: 0 !important;
     }
-    
+
     /* Code Block Styling */
     .stCode {
         background: linear-gradient(145deg, #f8f9fa, #e9ecef) !important;
@@ -485,7 +486,7 @@ SHARED_CSS = """
         border: 1px solid rgba(0,0,0,0.1) !important;
         box-shadow: inset 0 2px 4px rgba(0,0,0,0.05) !important;
     }
-    
+
     /* Container Backgrounds */
     .stContainer {
         background: rgba(255,255,255,0.7);
@@ -493,7 +494,7 @@ SHARED_CSS = """
         backdrop-filter: blur(10px);
         border: 1px solid rgba(255,255,255,0.2);
     }
-    
+
     /* Download Button Special Styling */
     .stDownloadButton > button {
         background: linear-gradient(135deg, #6c5ce7, #5f3dc4);
@@ -505,7 +506,7 @@ SHARED_CSS = """
         box-shadow: 0 4px 15px rgba(108, 92, 231, 0.3);
         transition: all 0.3s ease;
     }
-    
+
     .stDownloadButton > button:hover {
         background: linear-gradient(135deg, #5f3dc4, #553c9a);
         transform: translateY(-1px);
